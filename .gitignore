@@ -1,0 +1,5 @@
+# Private files that must not be published
+private/
+classroom-planner.html
+HANDOFF.md
+.claude/
