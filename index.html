@@ -58,6 +58,7 @@ h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacin
 .savebox { display: flex; flex-direction: column; min-width: 0; flex: 0 1 380px; }
 .saverow { display: flex; gap: 8px; }
 .saverow input { flex: 1; min-width: 0; }
+.filerow { display: flex; gap: 8px; margin-top: 8px; }
 .status { margin: 4px 0 0; min-height: 1.5em; font-size: 12.5px; color: var(--muted); }
 input[type="text"], select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
 button { font: inherit; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
@@ -145,6 +146,11 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     <div class="savebox">
       <label class="lbl" for="layout-name">Layout name</label>
       <div class="saverow"><input id="layout-name" type="text" maxlength="60" autocomplete="off"><button id="btn-save" class="primary" type="button">Save layout</button></div>
+      <div class="filerow">
+        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the layout back.">Download</button>
+        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that layout back.">Upload</button>
+        <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
+      </div>
       <p id="status" class="status" aria-live="polite"></p>
     </div>
   </header>
@@ -686,6 +692,166 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     saveDraft();
     setStatus((replaced ? 'Updated "' : 'Saved "') + nm + '" in this browser.');
     renderSaved();
+  });
+
+  /* ---------- download and upload ----------
+     Download makes a PNG picture of the layout and stores the layout data inside the
+     same file, in a PNG text chunk. Upload reads that chunk back. FILE_V is the data
+     format version: newer versions of the planner must keep reading older files. */
+  var FILE_KEY = 'classroom-layout-planner', FILE_V = 1, PIC_W = 1400, PIC_H = 1480;
+  var crcTable = null;
+  function crc32(u8) {
+    var n, k, c, i, crc = 0xFFFFFFFF;
+    if (!crcTable) {
+      crcTable = [];
+      for (n = 0; n < 256; n++) { c = n; for (k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); crcTable[n] = c >>> 0; }
+    }
+    for (i = 0; i < u8.length; i++) crc = crcTable[(crc ^ u8[i]) & 0xFF] ^ (crc >>> 8);
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function asciiJSON(o) {
+    return JSON.stringify(o).replace(/[\u007f-￿]/g, function (ch) { return '\\u' + ('0000' + ch.charCodeAt(0).toString(16)).slice(-4); });
+  }
+  function isPNG(u8) {
+    var sig = [137, 80, 78, 71, 13, 10, 26, 10];
+    if (u8.length < 45) return false;
+    for (var i = 0; i < 8; i++) if (u8[i] !== sig[i]) return false;
+    return true;
+  }
+  function addPngText(u8, key, text) {
+    var head = 'tEXt' + key + '\u0000', body = new Uint8Array(head.length + text.length), i;
+    for (i = 0; i < head.length; i++) body[i] = head.charCodeAt(i);
+    for (i = 0; i < text.length; i++) body[head.length + i] = text.charCodeAt(i);
+    /* The first chunk (IHDR) always ends at byte 33. The text chunk goes right after it. */
+    var out = new Uint8Array(u8.length + body.length + 8), dv = new DataView(out.buffer);
+    out.set(u8.subarray(0, 33), 0);
+    dv.setUint32(33, body.length - 4);
+    out.set(body, 37);
+    dv.setUint32(37 + body.length, crc32(body));
+    out.set(u8.subarray(33), 41 + body.length);
+    return out;
+  }
+  function readPngText(u8, key) {
+    var dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), p = 8;
+    while (p + 12 <= u8.length) {
+      var len = dv.getUint32(p), type = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+      var s = p + 8, e = s + len;
+      if (e > u8.length || type === 'IEND') break;
+      if (type === 'tEXt') {
+        var z = s; while (z < e && u8[z] !== 0) z++;
+        var k = '', i;
+        for (i = s; i < z; i++) k += String.fromCharCode(u8[i]);
+        if (k === key) {
+          var parts = [];
+          for (i = z + 1; i < e; i += 8192) parts.push(String.fromCharCode.apply(null, u8.subarray(i, Math.min(e, i + 8192))));
+          return parts.join('');
+        }
+      }
+      p = e + 4;
+    }
+    return null;
+  }
+  function pictureSVG(title) {
+    var NS = 'http://www.w3.org/2000/svg', c = svg.cloneNode(true);
+    c.setAttribute('xmlns', NS);
+    c.setAttribute('data-theme', 'light');
+    c.setAttribute('width', PIC_W); c.setAttribute('height', PIC_H);
+    c.removeAttribute('class');
+    var over = c.querySelector('#g-over'); if (over) over.innerHTML = '';
+    Array.prototype.forEach.call(c.querySelectorAll('.selring'), function (n) { n.parentNode.removeChild(n); });
+    Array.prototype.forEach.call(c.querySelectorAll('.it.sel'), function (n) { n.classList.remove('sel'); });
+    var t = document.createElementNS(NS, 'text');
+    t.setAttribute('x', '-30'); t.setAttribute('y', '-32'); t.setAttribute('font-size', '14'); t.setAttribute('font-weight', '600'); t.setAttribute('fill', '#1B2120');
+    t.textContent = title;
+    c.insertBefore(t, c.firstChild);
+    var bg = document.createElementNS(NS, 'rect');
+    bg.setAttribute('x', '-40'); bg.setAttribute('y', '-50'); bg.setAttribute('width', '700'); bg.setAttribute('height', '740'); bg.setAttribute('fill', '#FFFFFF');
+    c.insertBefore(bg, c.firstChild);
+    var st = document.createElementNS(NS, 'style');
+    st.textContent = $('app-style').textContent;
+    c.insertBefore(st, c.firstChild);
+    return new XMLSerializer().serializeToString(c);
+  }
+  function fileName(nm) {
+    var base = nm.replace(/[^A-Za-z0-9 _-]+/g, '').trim().replace(/\s+/g, '-');
+    return (base || 'classroom-layout') + '.png';
+  }
+  function downloadLayout() {
+    var nm = (nameInput.value || '').trim().slice(0, 60) || 'My layout';
+    var data = { app: FILE_KEY, v: FILE_V, name: nm, items: clean(items), savedAt: Date.now() };
+    function fail() { setStatus('The picture could not be made in this browser.'); }
+    setStatus('Making the picture…');
+    var img = new Image();
+    img.onerror = fail;
+    img.onload = function () {
+      try {
+        var cv = document.createElement('canvas'); cv.width = PIC_W; cv.height = PIC_H;
+        cv.getContext('2d').drawImage(img, 0, 0, PIC_W, PIC_H);
+        cv.toBlob(function (blob) {
+          if (!blob) { fail(); return; }
+          var fr = new FileReader();
+          fr.onerror = fail;
+          fr.onload = function () {
+            var out = addPngText(new Uint8Array(fr.result), FILE_KEY, asciiJSON(data));
+            var url = URL.createObjectURL(new Blob([out], { type: 'image/png' }));
+            var a = document.createElement('a'), fn = fileName(nm);
+            a.href = url; a.download = fn; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+            setStatus('Downloaded ' + fn + '. Keep the file itself: uploading it brings this layout back.');
+          };
+          fr.readAsArrayBuffer(blob);
+        }, 'image/png');
+      } catch (err) { fail(); }
+    };
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pictureSVG(nm));
+  }
+  function openFromFile(data) {
+    if (!data || data.app !== FILE_KEY || !Array.isArray(data.items)) { setStatus('That file is not a layout from this planner.'); return; }
+    if (Number(data.v) > FILE_V) { setStatus('That file was made with a newer version of the planner. Refresh this page and try again.'); return; }
+    var h = hydrate(data.items);
+    var nm = (typeof data.name === 'string' && data.name.trim()) ? data.name.trim().slice(0, 60) : 'Uploaded layout';
+    commit(); items = h; name = nm; nameInput.value = nm; selected.clear(); changed();
+    setStatus('Opened "' + nm + '" from the file. Choose Save layout to keep it in this browser.');
+  }
+  function addSavedFromFile(list) {
+    var add = [];
+    list.forEach(function (s) {
+      if (!s || typeof s.name !== 'string' || !Array.isArray(s.items)) return;
+      var h = hydrate(s.items); if (!h) return;
+      add.push({ name: s.name.slice(0, 60), items: clean(h), savedAt: Number(s.savedAt) || Date.now() });
+    });
+    if (!add.length) { setStatus('That file has no saved layouts in it.'); return; }
+    if (!storageWorks()) { setStatus('This browser is blocking saved data, so the layouts could not be added.'); return; }
+    var names = new Set(add.map(function (s) { return s.name; }));
+    writeLS(LOCAL_SAVED_KEY, add.concat(getSaved().filter(function (s) { return !names.has(s.name); })).slice(0, 30));
+    setStatus('Added ' + add.length + (add.length === 1 ? ' saved layout' : ' saved layouts') + ' from the file.');
+    renderSaved();
+  }
+  function readUpload(file) {
+    var fr = new FileReader();
+    fr.onerror = function () { setStatus('That file could not be read.'); };
+    fr.onload = function () {
+      var u8 = new Uint8Array(fr.result), data = null;
+      if (isPNG(u8)) {
+        var text = readPngText(u8, FILE_KEY);
+        if (!text) { setStatus('That picture has no layout data in it. Use the file made by Download, not a screenshot or a copy from a document or chat.'); return; }
+        try { data = JSON.parse(text); } catch (e) { data = null; }
+        openFromFile(data);
+        return;
+      }
+      try { data = JSON.parse(new TextDecoder('utf-8').decode(u8)); } catch (e2) { data = null; }
+      if (data && Array.isArray(data.saved)) addSavedFromFile(data.saved);
+      else if (data && Array.isArray(data.items)) openFromFile(data);
+      else setStatus('That file is not a layout from this planner. Choose a picture made by Download.');
+    };
+    fr.readAsArrayBuffer(file);
+  }
+  $('btn-download').addEventListener('click', downloadLayout);
+  $('btn-upload').addEventListener('click', function () { $('file-upload').click(); });
+  $('file-upload').addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (f) readUpload(f);
   });
 
   renderAll();
