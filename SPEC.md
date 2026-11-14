@@ -1,6 +1,14 @@
 # Classroom Layout Planner: spec for the shared version
 
-Status: draft for review, 14 Nov 2026. Nothing in this file has been built yet.
+Status: all six build steps were completed and published on 14 Nov 2026. The site is https://aroble11.github.io/classroom-layout-planner/
+
+Where the built version differs from this spec:
+
+- The walkway warning flags gaps from 1′ up to 2′. Pieces less than 1′ apart count as placed together and are not flagged.
+- The four built-in starting layouts were removed in step 3, not step 4.
+- A window that furniture can't go under gets a 1′ flagged strip in front of it. Door clear zones start 3′ deep.
+- Uploading a file whose room or furniture sizes differ from the stored room creates a separate room marked "(uploaded)".
+- The printed page and the look of the downloaded picture were not checked by the builder.
 
 This spec describes the version of the planner that colleagues can use for their own classrooms. `HANDOFF.md` describes the current version, which is hard-coded to one room.
 
