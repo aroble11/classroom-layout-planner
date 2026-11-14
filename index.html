@@ -147,6 +147,19 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
 .len { display: inline-flex; align-items: center; gap: 5px; }
 .len input { width: 62px; box-sizing: border-box; }
 .tips { margin: 0; padding-left: 18px !important; list-style: disc !important; font-size: 12.5px; color: var(--muted); gap: 4px !important; }
+.guide { stroke: var(--window); stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
+.checks li.warn button { background: color-mix(in srgb, var(--dim) 18%, transparent); }
+.inv li.seats { font-weight: 600; padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid var(--line); }
+#print-head { display: none; }
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff !important; padding: 0 !important; }
+  .top, .toolbar, .panel, .hint, .statusline { display: none !important; }
+  #print-head { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #000; }
+  .work { display: block; }
+  .canvas { border: none; padding: 0; background: #fff; }
+  #plan { width: 100%; height: 7in; }
+}
 .types { gap: 4px !important; }
 .types button { width: 100%; justify-content: flex-start; gap: 8px; text-align: left; white-space: normal; }
 .types button.on { border-color: var(--accent); background: var(--accent-soft); }
@@ -203,6 +216,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       <div class="filerow">
         <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download</button>
         <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload</button>
+        <button id="btn-print" type="button" title="Print this layout on one page.">Print</button>
         <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
       </div>
     </div>
@@ -226,6 +240,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
         <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
         <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
         <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
+        <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
       </div>
     </div>
   </div>
@@ -264,6 +279,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       </div>
     </div>
   </div>
+  <p id="print-head"></p>
   <main class="work">
     <section class="canvas" aria-label="Floor plan">
       <svg id="plan" class="arrange" viewBox="-40 -50 700 740" role="img" aria-label="Classroom floor plan you can edit"></svg>
@@ -615,7 +631,8 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   var mode = 'arrange';
   var selected = new Set(), undoStack = [], redoStack = [];
   var ssel = null, sUndo = [], sRedo = [], drawing = null, vbLock = null;
-  var opts = { snap: true, grid: true, zones: true, gaps: true };
+  var opts = { snap: true, grid: true, zones: true, gaps: true, align: true };
+  var warns = [], TOGETHER = 1, WALKWAY = 2;
   var drag = null, pendingDelete = null, pendingRoomDelete = false, pendingTypeDelete = false, issueIds = new Set(), issues = [];
 
   function sync() { if (room) room.draft = { name: name, items: clean(items), t: Date.now() }; }
@@ -815,31 +832,81 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     if (setup) s += '<line class="feathit" data-k="feature" data-id="' + f.id + '" ' + la + '/>';
     return s;
   }
+  /* Open distance from a piece to the nearest thing in each direction. "to" names what it reached:
+     null for another piece of furniture, otherwise 'the wall' or a fixture's name. */
   function gapsFor(it) {
-    var b = box(it), cy = (b.y1 + b.y2) / 2, cx = (b.x1 + b.x2) / 2, res = [], lim, ed = edges(room.outline);
-    var others = items.filter(function (o) { return o.id !== it.id; }).map(box).filter(function (o) { return !isSpare(o); }).concat(room.fixtures.map(fixBox));
+    var b = box(it), cy = (b.y1 + b.y2) / 2, cx = (b.x1 + b.x2) / 2, res = [], ed = edges(room.outline);
+    var obs = items.filter(function (o) { return o.id !== it.id; }).map(box).filter(function (o) { return !isSpare(o); }).map(function (o) { return { b: o, to: null }; })
+      .concat(room.fixtures.map(function (f) { return { b: fixBox(f), to: f.name }; }));
     function yov(lo, hi) { return lo < b.y2 - E && hi > b.y1 + E; }
     function xov(lo, hi) { return lo < b.x2 - E && hi > b.x1 + E; }
-    lim = Infinity;
-    ed.forEach(function (e) { if (!e.horiz && e.c >= b.x2 - E && yov(e.lo, e.hi)) lim = Math.min(lim, e.c); });
-    others.forEach(function (o) { if (yov(o.y1, o.y2) && o.x1 >= b.x2 - E) lim = Math.min(lim, o.x1); });
-    if (isFinite(lim)) res.push({ x1: b.x2, y1: cy, x2: lim, y2: cy, v: false });
-    lim = -Infinity;
-    ed.forEach(function (e) { if (!e.horiz && e.c <= b.x1 + E && yov(e.lo, e.hi)) lim = Math.max(lim, e.c); });
-    others.forEach(function (o) { if (yov(o.y1, o.y2) && o.x2 <= b.x1 + E) lim = Math.max(lim, o.x2); });
-    if (isFinite(lim)) res.push({ x1: lim, y1: cy, x2: b.x1, y2: cy, v: false });
-    lim = -Infinity;
-    ed.forEach(function (e) { if (e.horiz && e.c <= b.y1 + E && xov(e.lo, e.hi)) lim = Math.max(lim, e.c); });
-    others.forEach(function (o) { if (xov(o.x1, o.x2) && o.y2 <= b.y1 + E) lim = Math.max(lim, o.y2); });
-    if (isFinite(lim)) res.push({ x1: cx, y1: lim, x2: cx, y2: b.y1, v: true });
-    lim = Infinity;
-    ed.forEach(function (e) { if (e.horiz && e.c >= b.y2 - E && xov(e.lo, e.hi)) lim = Math.min(lim, e.c); });
-    others.forEach(function (o) { if (xov(o.x1, o.x2) && o.y1 >= b.y2 - E) lim = Math.min(lim, o.y1); });
-    if (isFinite(lim)) res.push({ x1: cx, y1: b.y2, x2: cx, y2: lim, v: true });
+    /* sign: +1 looks toward larger coordinates, -1 toward smaller. horiz: looking along x. */
+    function look(horiz, sign) {
+      var from = horiz ? (sign > 0 ? b.x2 : b.x1) : (sign > 0 ? b.y2 : b.y1), lim = sign * Infinity, to = null;
+      function consider(v, what) { if (sign > 0 ? (v >= from - E && v < lim) : (v <= from + E && v > lim)) { lim = v; to = what; } }
+      ed.forEach(function (e) { if (e.horiz !== horiz && (horiz ? yov(e.lo, e.hi) : xov(e.lo, e.hi))) consider(e.c, 'the wall'); });
+      obs.forEach(function (o) {
+        if (!(horiz ? yov(o.b.y1, o.b.y2) : xov(o.b.x1, o.b.x2))) return;
+        consider(horiz ? (sign > 0 ? o.b.x1 : o.b.x2) : (sign > 0 ? o.b.y1 : o.b.y2), o.to);
+      });
+      if (!isFinite(lim)) return;
+      var lo = Math.min(from, lim), hi = Math.max(from, lim);
+      res.push(horiz ? { x1: lo, y1: cy, x2: hi, y2: cy, v: false, to: to } : { x1: cx, y1: lo, x2: cx, y2: hi, v: true, to: to });
+    }
+    look(true, 1); look(true, -1); look(false, -1); look(false, 1);
     return res.filter(function (g) { return (g.v ? g.y2 - g.y1 : g.x2 - g.x1) > 0.04; });
+  }
+  /* Alignment while dragging. The edges and centers of everything that isn't being moved are the targets. */
+  function alignStart() {
+    var gb = null, xs = [], ys = [];
+    function add(b) {
+      xs.push({ v: b.x1, lo: b.y1, hi: b.y2 }, { v: b.x2, lo: b.y1, hi: b.y2 }, { v: (b.x1 + b.x2) / 2, lo: b.y1, hi: b.y2, mid: true });
+      ys.push({ v: b.y1, lo: b.x1, hi: b.x2 }, { v: b.y2, lo: b.x1, hi: b.x2 }, { v: (b.y1 + b.y2) / 2, lo: b.x1, hi: b.x2, mid: true });
+    }
+    items.forEach(function (it) {
+      var b = box(it);
+      if (selected.has(it.id)) { gb = gb ? { x1: Math.min(gb.x1, b.x1), y1: Math.min(gb.y1, b.y1), x2: Math.max(gb.x2, b.x2), y2: Math.max(gb.y2, b.y2) } : b; return; }
+      if (!isSpare(b)) add(b);
+    });
+    room.fixtures.forEach(function (f) { add(fixBox(f)); });
+    edges(room.outline).forEach(function (e) { (e.horiz ? ys : xs).push({ v: e.c, lo: e.lo, hi: e.hi, wall: true }); });
+    return { gb: gb, xs: xs, ys: ys };
+  }
+  /* Nudges a drag so the moving pieces line up with a nearby target, and returns the guide lines to show. */
+  function alignMove(al, dx, dy) {
+    var TH = 0.2, g = al.gb, guides = [], seen = {};
+    function cands(lo, hi, d) { return [{ v: lo + d }, { v: hi + d }, { v: (lo + hi) / 2 + d, mid: true }]; }
+    function best(cs, targets) {
+      var bd = null;
+      cs.forEach(function (c) { targets.forEach(function (t) {
+        if (!!t.mid !== !!c.mid) return;
+        var d = t.v - c.v;
+        if (Math.abs(d) <= TH && (bd === null || Math.abs(d) < Math.abs(bd))) bd = d;
+      }); });
+      return bd;
+    }
+    var ax = best(cands(g.x1, g.x2, dx), al.xs), ay = best(cands(g.y1, g.y2, dy), al.ys);
+    if (ax !== null) dx = r2(dx + ax);
+    if (ay !== null) dy = r2(dy + ay);
+    var nx1 = g.x1 + dx, nx2 = g.x2 + dx, ny1 = g.y1 + dy, ny2 = g.y2 + dy;
+    function collect(cs, targets, vertical) {
+      cs.forEach(function (c) { targets.forEach(function (t) {
+        if (t.wall || !!t.mid !== !!c.mid || Math.abs(t.v - c.v) > 0.006) return;
+        var k = (vertical ? 'x' : 'y') + r2(t.v);
+        var a = vertical ? Math.min(t.lo, ny1) : Math.min(t.lo, nx1), b = vertical ? Math.max(t.hi, ny2) : Math.max(t.hi, nx2);
+        if (seen[k]) { seen[k].a = Math.min(seen[k].a, a); seen[k].b = Math.max(seen[k].b, b); return; }
+        seen[k] = { v: t.v, a: a, b: b, vertical: vertical }; guides.push(seen[k]);
+      }); });
+    }
+    collect(cands(g.x1, g.x2, dx), al.xs, true);
+    collect(cands(g.y1, g.y2, dy), al.ys, false);
+    return { dx: dx, dy: dy, guides: guides };
   }
   function arrangeOverlay() {
     var s = '';
+    if (drag && drag.kind === 'move' && drag.guides) drag.guides.forEach(function (g) {
+      s += '<line class="guide" ' + (g.vertical ? lineAttrs(g.v, g.a - 0.5, g.v, g.b + 0.5) : lineAttrs(g.a - 0.5, g.v, g.b + 0.5, g.v)) + '/>';
+    });
     if (drag && drag.kind === 'box') {
       var x1 = Math.min(drag.start.x, drag.cur.x), y1 = Math.min(drag.start.y, drag.cur.y);
       s += '<rect class="marquee" x="' + P(x1) + '" y="' + P(y1) + '" width="' + P(Math.abs(drag.cur.x - drag.start.x)) + '" height="' + P(Math.abs(drag.cur.y - drag.start.y)) + '"/>';
@@ -957,7 +1024,47 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       if (hit(live[i].sh, live[j].sh)) issues.push({ ids: [live[i].it.id, live[j].it.id], text: TYPES[live[i].it.t].name + ' overlaps ' + TYPES[live[j].it.t].name.toLowerCase() });
     }
     issues.forEach(function (x) { x.ids.forEach(function (id) { issueIds.add(id); }); });
+    computeWarns(live);
   }
+  /* Tight walkways. Pieces closer than TOGETHER (1′) count as one group, such as a table and its chairs,
+     because nobody walks through a gap that small. A gap of at least TOGETHER but under WALKWAY (2′)
+     between two groups, or between a group and a wall or fixture, is reported once, at its narrowest.
+     A group with any piece closer than TOGETHER to a wall counts as being against that wall. */
+  function computeWarns(live) {
+    warns = [];
+    var n = live.length, grp = [], i, j, found = {};
+    for (i = 0; i < n; i++) grp[i] = i;
+    function top(k) { while (grp[k] !== k) k = grp[k] = grp[grp[k]]; return k; }
+    function gap(a, b) {
+      var ox = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1), oy = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
+      if (ox > 0.1 && oy > 0.1) return 0;
+      if (ox > 0.1) return -oy;
+      if (oy > 0.1) return -ox;
+      return null;
+    }
+    var gaps = [];
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
+      var g = gap(live[i].sh.b, live[j].sh.b);
+      if (g === null) continue;
+      if (g < TOGETHER) grp[top(i)] = top(j); else if (g < WALKWAY) gaps.push({ i: i, j: j, g: g });
+    }
+    function keep(key, g, ids, text) { if (!found[key] || g < found[key].g) found[key] = { g: g, ids: ids, text: text }; }
+    gaps.forEach(function (x) {
+      var a = top(x.i), b = top(x.j);
+      if (a === b) return;
+      keep(Math.min(a, b) + '-' + Math.max(a, b), x.g, [live[x.i].it.id, live[x.j].it.id], TYPES[live[x.i].it.t].name + ' and ' + TYPES[live[x.j].it.t].name.toLowerCase());
+    });
+    live.forEach(function (x, k) {
+      if (!inRoom(x.sh.b, x.sh.round)) return;
+      gapsFor(x.it).forEach(function (gp, d) {
+        var len = gp.v ? gp.y2 - gp.y1 : gp.x2 - gp.x1;
+        if (gp.to && len < WALKWAY) keep(top(k) + (gp.v ? 'v' : 'h') + (gp.v ? gp.y1 < x.sh.b.y1 : gp.x1 < x.sh.b.x1) + gp.to, len, [x.it.id], TYPES[x.it.t].name + ' and ' + gp.to);
+      });
+    });
+    warns = Object.keys(found).map(function (k) { return found[k]; }).filter(function (w) { return w.g >= TOGETHER; }).sort(function (a, b) { return a.g - b.g; })
+      .map(function (w) { return { ids: w.ids, text: 'Tight walkway: ' + fmt(w.g) + ' between ' + w.text }; });
+  }
+  function seatCount() { return items.filter(function (it) { return TYPES[it.t].cls === 'chr' && !isSpare(box(it)); }).length; }
   function renderPlan() {
     computeIssues();
     var vb = vbLock || viewBox();
@@ -971,7 +1078,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     var counts = {}, spare = {};
     ORDER.forEach(function (t) { counts[t] = 0; spare[t] = 0; });
     items.forEach(function (it) { if (isSpare(box(it))) spare[it.t]++; else counts[it.t]++; });
-    var inv = '';
+    var inv = '<li class="seats"><span class="nm">Seats (chairs in the room)</span><span class="ct">' + seatCount() + '</span></li>';
     ORDER.forEach(function (t) {
       var T = TYPES[t], total = counts[t] + spare[t], lim = T.owned, over = lim !== null && total > lim;
       inv += '<li><span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) +
@@ -981,15 +1088,20 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     $('inventory').innerHTML = inv;
 
     var ck = $('checks'); ck.innerHTML = '';
-    if (!issues.length) { ck.innerHTML = '<li class="ok">No overlaps, and the clear zones are empty.</li>'; }
+    function checkRow(x, cls) {
+      var li = document.createElement('li'), b = document.createElement('button');
+      if (cls) li.className = cls;
+      b.type = 'button'; b.textContent = x.text; b.title = 'Select these pieces';
+      b.addEventListener('click', function () { selected = new Set(x.ids); renderAll(); });
+      li.appendChild(b); ck.appendChild(li);
+    }
+    function moreRow(k) { var m = document.createElement('li'); m.className = 'more'; m.textContent = '+' + k + ' more'; ck.appendChild(m); }
+    if (!issues.length && !warns.length) ck.innerHTML = '<li class="ok">No overlaps, the clear zones are empty, and walkways are at least 2′ wide.</li>';
     else {
-      issues.slice(0, 10).forEach(function (x) {
-        var li = document.createElement('li'), b = document.createElement('button');
-        b.type = 'button'; b.textContent = x.text; b.title = 'Select these pieces';
-        b.addEventListener('click', function () { selected = new Set(x.ids); renderAll(); });
-        li.appendChild(b); ck.appendChild(li);
-      });
-      if (issues.length > 10) { var m = document.createElement('li'); m.className = 'more'; m.textContent = '+' + (issues.length - 10) + ' more'; ck.appendChild(m); }
+      issues.slice(0, 10).forEach(function (x) { checkRow(x, ''); });
+      if (issues.length > 10) moreRow(issues.length - 10);
+      warns.slice(0, 6).forEach(function (x) { checkRow(x, 'warn'); });
+      if (warns.length > 6) moreRow(warns.length - 6);
     }
 
     var si = $('selinfo');
@@ -1521,7 +1633,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       } else if (!selected.has(id)) { selected = new Set([id]); }
       var orig = new Map();
       selected.forEach(function (sid) { var it = find(sid); if (it) orig.set(sid, { x: it.x, y: it.y }); });
-      drag = { kind: 'move', start: p, orig: orig, before: snapshot(), moved: false };
+      drag = { kind: 'move', start: p, orig: orig, before: snapshot(), moved: false, align: alignStart(), guides: [] };
     } else {
       drag = { kind: 'box', start: p, cur: p, base: (e.shiftKey ? new Set(selected) : new Set()) };
       if (!e.shiftKey) selected.clear();
@@ -1536,6 +1648,8 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     if (drag.kind === 'move') {
       var dx = p.x - drag.start.x, dy = p.y - drag.start.y;
       if (opts.snap) { dx = snap(dx); dy = snap(dy); }
+      drag.guides = [];
+      if (opts.align && drag.align.gb) { var al = alignMove(drag.align, dx, dy); dx = al.dx; dy = al.dy; drag.guides = al.guides; }
       if (dx || dy) drag.moved = true;
       drag.orig.forEach(function (o, id) { var it = find(id); if (it) { it.x = r2(o.x + dx); it.y = r2(o.y + dy); } });
       renderPlan();
@@ -1565,7 +1679,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   $('btn-del').addEventListener('click', delSel);
   $('btn-undo').addEventListener('click', undo);
   $('btn-redo').addEventListener('click', redo);
-  ['snap', 'grid', 'zones', 'gaps'].forEach(function (k) {
+  ['snap', 'grid', 'zones', 'gaps', 'align'].forEach(function (k) {
     var el = $('opt-' + k); el.checked = opts[k];
     el.addEventListener('change', function () { opts[k] = el.checked; renderAll(); });
   });
@@ -1795,6 +1909,15 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     fr.readAsArrayBuffer(file);
   }
   $('btn-download').addEventListener('click', downloadLayout);
+  /* Print shows only the plan, in the light theme, under a one-line heading. See the @media print styles. */
+  $('btn-print').addEventListener('click', function () {
+    selected.clear(); renderAll();
+    var nm = (nameInput.value || '').trim() || 'Untitled layout', seats = seatCount();
+    $('print-head').textContent = room.name + ' · ' + nm + ' · ' + seats + (seats === 1 ? ' seat' : ' seats') + ' · ' + new Date().toLocaleDateString();
+    document.documentElement.setAttribute('data-theme', 'light');
+    window.print();
+  });
+  window.addEventListener('afterprint', function () { document.documentElement.removeAttribute('data-theme'); });
   $('btn-upload').addEventListener('click', function () { $('file-upload').click(); });
   $('file-upload').addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
