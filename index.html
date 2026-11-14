@@ -59,7 +59,6 @@ h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacin
 .saverow { display: flex; gap: 8px; }
 .saverow input { flex: 1; min-width: 0; }
 .filerow { display: flex; gap: 8px; margin-top: 8px; }
-.status { margin: 4px 0 0; min-height: 1.5em; font-size: 12.5px; color: var(--muted); }
 input[type="text"], select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
 button { font: inherit; font-size: 13px; font-weight: 500; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 11px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 button:hover:not(:disabled) { border-color: var(--muted); }
@@ -133,6 +132,51 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
 @media (max-width: 900px) { .work { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 520px) { h1 { font-size: 22px; } .toolbar { padding: 10px; gap: 10px 14px; } }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+/* rooms and room setup */
+input[type="number"] { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.roombox { display: flex; flex-direction: column; min-width: 0; flex: 0 1 320px; }
+.roombox select { flex: 1; min-width: 0; }
+.statusline { margin: -6px 0 0; min-height: 1.5em; font-size: 12.5px; color: var(--muted); }
+.form { display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.form .row { display: flex; flex-direction: column; gap: 3px; }
+.form .row > span { font-size: 12px; color: var(--muted); }
+.form input[type="text"] { width: 100%; box-sizing: border-box; }
+.form .check { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.form .check input { accent-color: var(--accent); margin: 0; }
+.form .muted, .panel .muted { color: var(--muted); }
+.len { display: inline-flex; align-items: center; gap: 5px; }
+.len input { width: 62px; box-sizing: border-box; }
+.tips { margin: 0; padding-left: 18px !important; list-style: disc !important; font-size: 12.5px; color: var(--muted); gap: 4px !important; }
+.fix .body { fill: var(--park); stroke: var(--muted); stroke-width: 1.2; }
+.fix text { fill: var(--ink); font-size: 11px; font-weight: 500; pointer-events: none; }
+.feat { stroke-width: 6; }
+.f-board { stroke: var(--board); }
+.f-window { stroke: var(--window); stroke-width: 4; stroke-dasharray: 10 6; }
+.f-door { stroke: var(--door); }
+.f-closet { stroke: var(--closet); }
+.f-screen { stroke: var(--oth-s); }
+.f-outlet { stroke: var(--dim); stroke-width: 9; }
+.f-other { stroke: var(--muted); }
+.feathit { stroke: transparent; stroke-width: 18; cursor: grab; }
+.wallhit { stroke: transparent; stroke-width: 14; }
+.wallhit.h { cursor: ns-resize; }
+.wallhit.v { cursor: ew-resize; }
+.wallpill { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.wallpill.h { cursor: ns-resize; }
+.wallpill.v { cursor: ew-resize; }
+.wallsel { stroke: var(--sel); stroke-width: 5; pointer-events: none; }
+.walllen { fill: var(--muted); font-family: var(--font-mono) !important; font-size: 10px; pointer-events: none; }
+.setup .it { opacity: 0.3; pointer-events: none; }
+.setup .fix, .setup .zone { cursor: grab; }
+.arrange .fix, .arrange .zone { pointer-events: none; }
+.setsel { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 4 3; pointer-events: none; }
+.handle { fill: var(--surface); stroke: var(--sel); stroke-width: 1.5; cursor: nwse-resize; }
+.oldroom { fill: none; stroke: var(--grid-5); stroke-width: 2; }
+.drawline { fill: none; stroke: var(--sel); stroke-width: 2.5; stroke-linejoin: miter; }
+.drawprev { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.drawpt { fill: var(--sel); }
+.drawstart { fill: var(--surface); stroke: var(--sel); stroke-width: 2; }
+.ruler { fill: var(--muted); font-family: var(--font-mono) !important; font-size: 10px; }
 </style>
 </head>
 <body>
@@ -141,30 +185,24 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
   <header class="top">
     <div class="titleblock">
       <h1>Classroom Layout Planner</h1>
-      <p class="sub">Room <span class="mono">28′ × 24′ 8″</span>, drawn to scale. Drag furniture to move it.</p>
+      <p class="sub" id="sub"></p>
     </div>
-    <div class="savebox">
+    <div class="roombox">
+      <label class="lbl" for="room-pick">Room</label>
+      <div class="saverow"><select id="room-pick"></select><button id="btn-setup" type="button">Room setup</button></div>
+    </div>
+    <div class="savebox" id="savebox">
       <label class="lbl" for="layout-name">Layout name</label>
       <div class="saverow"><input id="layout-name" type="text" maxlength="60" autocomplete="off"><button id="btn-save" class="primary" type="button">Save layout</button></div>
       <div class="filerow">
-        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the layout back.">Download</button>
-        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that layout back.">Upload</button>
+        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download</button>
+        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload</button>
         <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
       </div>
-      <p id="status" class="status" aria-live="polite"></p>
     </div>
   </header>
-  <div class="toolbar" role="toolbar" aria-label="Planner tools">
-    <div class="tgroup">
-      <label class="lbl" for="preset">Start from</label>
-      <select id="preset">
-        <option value="">Choose a layout…</option>
-        <option value="rows">Rows facing the board (28 seats)</option>
-        <option value="pods">Pods of 4 (24 seats)</option>
-        <option value="joined">Joined groups (28 seats)</option>
-        <option value="long">Long groups by the window (28 seats)</option>
-      </select>
-    </div>
+  <p id="status" class="statusline" aria-live="polite"></p>
+  <div class="toolbar" id="tb-arrange" role="toolbar" aria-label="Planner tools">
     <div class="tgroup"><span class="lbl">Add</span><div class="btns" id="add-btns"></div></div>
     <div class="tgroup"><span class="lbl">Selection</span>
       <div class="btns">
@@ -185,16 +223,63 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
       </div>
     </div>
   </div>
+  <div class="toolbar" id="tb-setup" role="toolbar" aria-label="Room setup tools" hidden>
+    <div class="tgroup"><span class="lbl">This room</span>
+      <div class="btns">
+        <button id="btn-room-new" type="button">New room</button>
+        <button id="btn-room-dup" type="button">Duplicate room</button>
+        <button id="btn-room-del" type="button" class="danger">Delete room</button>
+      </div>
+    </div>
+    <div class="tgroup"><span class="lbl">Shape</span>
+      <div class="btns">
+        <button id="btn-draw" type="button">Draw outline</button>
+        <button id="btn-flip-lr" type="button">Flip left–right</button>
+        <button id="btn-flip-fb" type="button">Flip front–back</button>
+      </div>
+    </div>
+    <div class="tgroup"><span class="lbl">Add to a wall</span><div class="btns" id="feat-btns"></div></div>
+    <div class="tgroup"><span class="lbl">Add to the floor</span>
+      <div class="btns">
+        <button id="btn-add-fixture" type="button">Fixture</button>
+        <button id="btn-add-zone" type="button">Clear zone</button>
+      </div>
+    </div>
+    <div class="tgroup"><span class="lbl">History</span>
+      <div class="btns"><button id="btn-sundo" type="button">Undo</button><button id="btn-sredo" type="button">Redo</button></div>
+    </div>
+  </div>
+  <div class="toolbar" id="tb-draw" role="toolbar" aria-label="Outline drawing tools" hidden>
+    <div class="tgroup"><span class="lbl">Drawing the outline</span>
+      <div class="btns">
+        <button id="btn-draw-finish" type="button" class="primary">Finish</button>
+        <button id="btn-draw-back" type="button">Remove last corner</button>
+        <button id="btn-draw-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
   <main class="work">
     <section class="canvas" aria-label="Floor plan">
-      <svg id="plan" viewBox="-40 -50 700 740" role="img" aria-label="Classroom floor plan you can edit"></svg>
-      <p class="hint">Shift-click or drag across empty floor to select several pieces. <kbd>R</kbd> rotate · <kbd>D</kbd> duplicate · <kbd>Del</kbd> delete · arrows nudge 3″ (<kbd>Shift</kbd> for 1′) · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo. Furniture in the gray strip below the room is spare and isn't counted.</p>
+      <svg id="plan" class="arrange" viewBox="-40 -50 700 740" role="img" aria-label="Classroom floor plan you can edit"></svg>
+      <p class="hint" id="hint"></p>
     </section>
-    <aside class="panel">
+    <aside class="panel" id="panel-arrange">
       <section><h2>In the room</h2><ul id="inventory" class="inv"></ul></section>
       <section><h2>Checks</h2><ul id="checks" class="checks"></ul></section>
       <section><h2>Selected</h2><div id="selinfo"></div></section>
       <section><h2>Saved layouts</h2><ul id="saved" class="saved"></ul></section>
+    </aside>
+    <aside class="panel" id="panel-setup" hidden>
+      <section><h2>Room</h2><div id="roomform" class="form"></div></section>
+      <section><h2>Selected</h2><div id="setupsel" class="form"></div></section>
+      <section><h2>Tips</h2>
+        <ul class="tips">
+          <li>Each wall shows its length. Drag that number to move the wall, or click it and type an exact length.</li>
+          <li>Drag boards, windows and doors along the walls.</li>
+          <li>Fixtures stay put when you arrange furniture.</li>
+          <li>Furniture in a clear zone is flagged.</li>
+        </ul>
+      </section>
     </aside>
   </main>
 </div>
@@ -203,7 +288,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
 <script id="app-code">
 (function () {
   'use strict';
-  var S = 20, E = 0.01;
+  /* Units are feet. S is pixels per foot. The room is a right-angled polygon whose
+     smallest x and y are 0. Furniture below the room, in the gray strip, is "spare". */
+  var S = 20, E = 0.01, SNAP = 0.25, SPARE_GAP = 0.73, PARK_TOP = 2.08, PARK_H = 5.5;
   var TYPES = {
     table: { w: 5, h: 2, label: '', cls: 'tbl', name: 'Table', plural: 'Tables', owned: 15, sw: 'sw-tbl', btn: 'Table' },
     chair: { w: 1.625, h: 1.625, label: '', cls: 'chr', name: 'Chair', plural: 'Chairs', owned: 30, sw: 'sw-chr', btn: 'Chair' },
@@ -213,88 +300,133 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     shelf: { w: 3, h: 1.25, label: 'Shelf', cls: 'oth', name: 'Bookshelf', plural: 'Bookshelf', owned: 1, sw: 'sw-oth', btn: 'Shelf' }
   };
   var ORDER = ['table', 'chair', 'desk', 'cow', 'storage', 'shelf'];
-  var ROOM = [[0, 0], [28, 0], [28, 16.71], [24.79, 16.71], [24.79, 22.17], [20.29, 22.17], [20.29, 24.67], [0, 24.67]];
-  var ZONES = [
-    { x1: 20.29, y1: 16.71, x2: 24.79, y2: 22.17, label: 'Keep clear (door)', msg: 'is in the door area' },
-    { x1: 25.5, y1: 4.5, x2: 28, y2: 12.31, label: 'Board access', msg: 'blocks the small whiteboard' }
-  ];
-  var PARK = { x1: 0, y1: 26.75, x2: 28, y2: 32.25 };
-  var DRAFT_KEY = 'classroom-planner-draft-v1', LOCAL_SAVED_KEY = 'classroom-planner-saved-v1';
-  var PRESET_NAMES = { rows: 'Rows facing the board', pods: 'Pods of 4', joined: 'Joined groups', long: 'Long groups by the window' };
+  var KINDS = {
+    whiteboard: { name: 'Whiteboard', len: 8, cls: 'f-board' },
+    window: { name: 'Window', len: 6, cls: 'f-window' },
+    door: { name: 'Door', len: 3, cls: 'f-door' },
+    closet: { name: 'Closet', len: 4, cls: 'f-closet' },
+    screen: { name: 'Projector screen', len: 6, cls: 'f-screen' },
+    outlet: { name: 'Outlet', len: 0.5, cls: 'f-outlet' },
+    other: { name: 'Other', len: 3, cls: 'f-other' }
+  };
+  var KIND_ORDER = ['whiteboard', 'window', 'door', 'closet', 'screen', 'outlet', 'other'];
+  var STORE_KEY = 'classroom-planner-v2', OLD_DRAFT_KEY = 'classroom-planner-draft-v1', OLD_SAVED_KEY = 'classroom-planner-saved-v1';
+  var DEFAULT_ID = 'default-room';
 
+  /* ---------- small helpers ---------- */
   var uid = 1;
   function mk(t, x, y, r) { return { id: 'i' + (uid++), t: t, x: x, y: y, r: r || 0 }; }
+  function newId(p) { return p + Math.random().toString(36).slice(2, 9); }
   function dims(it) { var T = TYPES[it.t]; return (it.r % 2) ? { w: T.h, h: T.w } : { w: T.w, h: T.h }; }
   function box(it) { var d = dims(it); return { x1: it.x, y1: it.y, x2: it.x + d.w, y2: it.y + d.h }; }
-  function r2(v) { return Math.round(v * 100) / 100; }
+  function fixBox(f) { return { x1: f.x, y1: f.y, x2: f.x + f.w, y2: f.y + f.h }; }
+  /* Rounds to a thousandth of a foot, so repeated moves and flips don't drift. */
+  function r2(v) { return Math.round(v * 1000) / 1000; }
+  function snap(v) { return Math.round(v / SNAP) * SNAP; }
+  function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function fmt(ft) {
     var inch = Math.max(0, Math.round(ft * 12)), f = Math.floor(inch / 12), i = inch % 12;
     if (!f) return i + '″';
     return i ? f + '′ ' + i + '″' : f + '′';
   }
-  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function maxXRange(y1, y2) { if (y2 > 22.17 + E) return 20.29; if (y2 > 16.71 + E) return 24.79; return 28; }
-  function maxYRange(x1, x2) { if (x2 > 24.79 + E) return 16.71; if (x2 > 20.29 + E) return 22.17; return 24.67; }
-  function inRoom(b) { return b.x1 >= -E && b.y1 >= -E && b.y2 <= 24.67 + E && b.x2 <= maxXRange(b.y1, b.y2) + E; }
-  function isSpare(b) { return b.y1 >= 25.4; }
-  function overlap(a, b) { var w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1), h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1); return (w > 0 && h > 0) ? w * h : 0; }
-
-  /* ---------- presets ---------- */
-  function spares(arr, nT, nC) {
-    var k;
-    for (k = 0; k < nT; k++) arr.push(mk('table', 0.5 + k * 5.5, 27.25, 0));
-    for (k = 0; k < nC; k++) arr.push(mk('chair', 0.5 + k * 2, 29.75, 0));
+  /* Like fmt, but to the nearest quarter inch. Used for walls and sizes. */
+  function fmtFine(ft) {
+    var q = Math.max(0, Math.round(ft * 48)) / 4, f = Math.floor(q / 12), i = q - f * 12;
+    if (!f) return i + '″';
+    return i ? f + '′ ' + i + '″' : f + '′';
   }
-  var PRESETS = {
-    rows: function () {
-      var a = [], ys = [3.5, 9.75, 16], counts = [5, 5, 4];
-      ys.forEach(function (y, i) {
-        for (var k = 0; k < counts[i]; k++) {
-          var x = k * 5; a.push(mk('table', x, y, 0));
-          a.push(mk('chair', x + 0.4375, y + 2.25, 0)); a.push(mk('chair', x + 2.9375, y + 2.25, 0));
-        }
-      });
-      a.push(mk('desk', 0.3, 22.17, 0), mk('storage', 4.6, 23.17, 0), mk('storage', 9, 23.17, 0), mk('shelf', 13.4, 23.42, 0), mk('cow', 16.8, 22.17, 0));
-      spares(a, 1, 2); return a;
-    },
-    pods: function () {
-      var a = [];
-      [0.5, 11.5].forEach(function (c) {
-        [3.5, 10.75, 18].forEach(function (b) {
-          a.push(mk('table', c + 2, b, 1), mk('table', c + 4, b, 1));
-          [0.4375, 2.9375].forEach(function (o) { a.push(mk('chair', c + 0.125, b + o, 1), mk('chair', c + 6.25, b + o, 3)); });
-        });
-      });
-      a.push(mk('storage', 8, 23.17, 0), mk('storage', 26.5, 0.3, 1), mk('shelf', 26.75, 12.4, 1), mk('desk', 22, 14.2, 0), mk('cow', 22, 11.7, 0));
-      spares(a, 3, 6); return a;
-    },
-    joined: function () {
-      var a = [];
-      function bank(xs, yN, yS) {
-        xs.forEach(function (x) {
-          a.push(mk('table', x, yN, 0), mk('table', x, yS, 0));
-          [0.4375, 2.9375].forEach(function (o) { a.push(mk('chair', x + o, yN - 1.875, 2), mk('chair', x + o, yS + 2.25, 0)); });
-        });
-      }
-      bank([2, 7, 15, 20], 5.5, 7.5); bank([2, 7, 15], 15.75, 17.75);
-      a.push(mk('desk', 25.5, 0.3, 1), mk('storage', 26.5, 12.4, 1), mk('cow', 24.3, 14.2, 0), mk('shelf', 12, 23.42, 0), mk('storage', 0.2, 20.6, 1));
-      spares(a, 1, 2); return a;
-    },
-    long: function () {
-      var a = [];
-      function col(c, bands) {
-        bands.forEach(function (b) {
-          a.push(mk('table', c + 2, b, 1), mk('table', c + 4, b, 1));
-          [0.4375, 2.9375].forEach(function (o) { a.push(mk('chair', c + 0.125, b + o, 1), mk('chair', c + 6.25, b + o, 3)); });
-        });
-      }
-      col(2, [3.5, 8.5, 13.5, 18.5]); col(12.25, [3.5, 8.5, 13.5]);
-      a.push(mk('desk', 25.5, 0.3, 1), mk('storage', 26.5, 12.4, 1), mk('cow', 24.3, 14.2, 0), mk('storage', 10.6, 23.17, 0), mk('shelf', 15, 23.42, 0));
-      spares(a, 1, 2); return a;
-    }
-  };
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function overlap(a, b) { var w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1), h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1); return (w > 0 && h > 0) ? w * h : 0; }
+  function readLS(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  function writeLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+  function storageWorks() {
+    try { localStorage.setItem('classroom-planner-test', '1'); localStorage.removeItem('classroom-planner-test'); return true; } catch (e) { return false; }
+  }
 
-  /* ---------- state ---------- */
+  /* ---------- outline geometry ---------- */
+  function bounds(o) {
+    var b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    o.forEach(function (p) { b.minX = Math.min(b.minX, p[0]); b.minY = Math.min(b.minY, p[1]); b.maxX = Math.max(b.maxX, p[0]); b.maxY = Math.max(b.maxY, p[1]); });
+    return b;
+  }
+  /* Each wall as { i, horiz, c, lo, hi, dir }: c is the fixed coordinate, lo..hi the range along the wall. */
+  function edges(o) {
+    return o.map(function (a, i) {
+      var b = o[(i + 1) % o.length], horiz = a[1] === b[1];
+      return horiz ? { i: i, horiz: true, c: a[1], lo: Math.min(a[0], b[0]), hi: Math.max(a[0], b[0]), dir: b[0] >= a[0] ? 1 : -1 }
+        : { i: i, horiz: false, c: a[0], lo: Math.min(a[1], b[1]), hi: Math.max(a[1], b[1]), dir: b[1] >= a[1] ? 1 : -1 };
+    });
+  }
+  function pointIn(px, py, o) {
+    var inside = false;
+    for (var i = 0, j = o.length - 1; i < o.length; j = i++) {
+      var xi = o[i][0], yi = o[i][1], xj = o[j][0], yj = o[j][1];
+      if ((yi > py) !== (yj > py) && px < (xj - xi) * (py - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function cleanOutline(o) {
+    var pts = o.map(function (p) { return [r2(p[0]), r2(p[1])]; }), changed = true;
+    while (changed && pts.length > 2) {
+      changed = false;
+      for (var i = 0; i < pts.length; i++) {
+        var n = pts.length, a = pts[(i + n - 1) % n], b = pts[i], c = pts[(i + 1) % n];
+        var dup = b[0] === c[0] && b[1] === c[1];
+        var line = (a[0] === b[0] && b[0] === c[0]) || (a[1] === b[1] && b[1] === c[1]);
+        if (dup || line) { pts.splice(i, 1); changed = true; break; }
+      }
+    }
+    return pts;
+  }
+  function validOutline(o) {
+    var n = o.length, i, j;
+    if (n < 4 || n % 2) return false;
+    for (i = 0; i < n; i++) {
+      var a = o[i], b = o[(i + 1) % n];
+      if (!isFinite(a[0]) || !isFinite(a[1])) return false;
+      if (a[0] !== b[0] && a[1] !== b[1]) return false;
+    }
+    var ed = edges(o), B = bounds(o);
+    if (B.maxX - B.minX > 300 || B.maxY - B.minY > 300) return false;
+    for (i = 0; i < n; i++) {
+      if (ed[i].hi - ed[i].lo < 0.2) return false;
+      if (ed[i].horiz === ed[(i + 1) % n].horiz) return false;
+    }
+    for (i = 0; i < n; i++) for (j = i + 1; j < n; j++) {
+      if (j === i + 1 || (i === 0 && j === n - 1)) continue;
+      var e = ed[i], f = ed[j];
+      if (e.horiz === f.horiz) { if (Math.abs(e.c - f.c) < E && e.lo <= f.hi + E && f.lo <= e.hi + E) return false; }
+      else if (f.c >= e.lo - E && f.c <= e.hi + E && e.c >= f.lo - E && e.c <= f.hi + E) return false;
+    }
+    return true;
+  }
+  function moveEdge(o, i, delta) {
+    var pts = o.map(function (p) { return [p[0], p[1]]; }), a = pts[i], b = pts[(i + 1) % pts.length];
+    if (a[1] === b[1]) { a[1] = r2(a[1] + delta); b[1] = r2(b[1] + delta); } else { a[0] = r2(a[0] + delta); b[0] = r2(b[0] + delta); }
+    return pts;
+  }
+
+  /* ---------- rooms ---------- */
+  function emptyDraft() { return { name: '', items: [], t: 0 }; }
+  function defaultRoom() {
+    return {
+      id: DEFAULT_ID, name: 'My classroom',
+      outline: [[0, 0], [28, 0], [28, 16.71], [24.79, 16.71], [24.79, 22.17], [20.29, 22.17], [20.29, 24.67], [0, 24.67]],
+      features: [
+        { id: 'f1', kind: 'whiteboard', label: 'Large whiteboard', x1: 1, y1: 0, x2: 27, y2: 0, under: true },
+        { id: 'f2', kind: 'whiteboard', label: 'Small whiteboard', x1: 28, y1: 4.5, x2: 28, y2: 12.31, under: true },
+        { id: 'f3', kind: 'window', label: 'Window (above desk height)', x1: 0, y1: 1.5, x2: 0, y2: 23, under: true },
+        { id: 'f4', kind: 'door', label: 'Door', x1: 24.79, y1: 17.6, x2: 24.79, y2: 20.8, under: true },
+        { id: 'f5', kind: 'closet', label: 'Closet', x1: 20.29, y1: 22.17, x2: 24.79, y2: 22.17, under: true }
+      ],
+      fixtures: [],
+      zones: [
+        { id: 'z1', label: 'Keep clear', x1: 20.29, y1: 16.71, x2: 24.79, y2: 22.17, door: 'f4', auto: false },
+        { id: 'z2', label: 'Board access', x1: 25.5, y1: 4.5, x2: 28, y2: 12.31, door: null, auto: false }
+      ],
+      layouts: [], draft: emptyDraft()
+    };
+  }
   function hydrate(arr) {
     if (!Array.isArray(arr)) return null;
     var out = [];
@@ -307,35 +439,210 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     return out;
   }
   function clean(arr) { return arr.map(function (it) { return { t: it.t, x: r2(it.x), y: r2(it.y), r: it.r }; }); }
-  function readLS(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
-  function writeLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
-
-  /* Everything is kept in this browser's localStorage. The room starts empty. */
-  function getSaved() {
-    var v = readLS(LOCAL_SAVED_KEY);
-    return Array.isArray(v) ? v.filter(function (s) { return s && typeof s.name === 'string' && Array.isArray(s.items); }) : [];
+  function cleanLayouts(list) {
+    var out = [];
+    (Array.isArray(list) ? list : []).forEach(function (s) {
+      if (!s || typeof s.name !== 'string' || !Array.isArray(s.items)) return;
+      var h = hydrate(s.items); if (!h) return;
+      out.push({ name: s.name.slice(0, 60), items: clean(h), savedAt: Number(s.savedAt) || Date.now() });
+    });
+    return out.slice(0, 30);
   }
-  var items = [], name = '', startNote = '';
-  var draft = readLS(DRAFT_KEY);
-  if (draft && Array.isArray(draft.items)) {
-    var di = hydrate(draft.items);
-    if (di) {
-      items = di; name = typeof draft.name === 'string' ? draft.name : '';
-      if (di.length) startNote = 'Picked up where you left off in this browser.';
+  /* Rebuilds a room from stored or uploaded data, dropping anything malformed. Returns null if the outline is unusable. */
+  function sanitizeRoom(o, full) {
+    if (!o || !Array.isArray(o.outline)) return null;
+    var pts = [];
+    for (var i = 0; i < o.outline.length; i++) {
+      var p = o.outline[i], x = Number(p && p[0]), y = Number(p && p[1]);
+      if (!isFinite(x) || !isFinite(y)) return null;
+      pts.push([x, y]);
     }
+    pts = cleanOutline(pts);
+    if (!validOutline(pts)) return null;
+    function num(v) { v = Number(v); return isFinite(v) ? r2(v) : null; }
+    function sid(v, p) { return (typeof v === 'string' && v) ? v.slice(0, 40) : newId(p); }
+    function txt(v, d) { return (typeof v === 'string' && v.trim()) ? v.trim().slice(0, 40) : d; }
+    var r = { id: sid(o.id, 'r'), name: (typeof o.name === 'string' && o.name.trim()) ? o.name.trim().slice(0, 60) : 'Room', outline: pts, features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
+    (Array.isArray(o.features) ? o.features : []).forEach(function (f) {
+      if (!f || !KINDS[f.kind]) return;
+      var a = [num(f.x1), num(f.y1), num(f.x2), num(f.y2)];
+      if (a.indexOf(null) >= 0 || (a[0] !== a[2] && a[1] !== a[3])) return;
+      r.features.push({ id: sid(f.id, 'f'), kind: f.kind, label: txt(f.label, f.kind === 'outlet' ? '' : KINDS[f.kind].name), x1: Math.min(a[0], a[2]), y1: Math.min(a[1], a[3]), x2: Math.max(a[0], a[2]), y2: Math.max(a[1], a[3]), under: f.under !== false });
+    });
+    (Array.isArray(o.fixtures) ? o.fixtures : []).forEach(function (f) {
+      if (!f) return;
+      var a = [num(f.x), num(f.y), num(f.w), num(f.h)];
+      if (a.indexOf(null) >= 0 || a[2] <= 0 || a[3] <= 0) return;
+      r.fixtures.push({ id: sid(f.id, 'x'), name: txt(f.name, 'Fixture'), x: a[0], y: a[1], w: a[2], h: a[3] });
+    });
+    (Array.isArray(o.zones) ? o.zones : []).forEach(function (z) {
+      if (!z) return;
+      var a = [num(z.x1), num(z.y1), num(z.x2), num(z.y2)];
+      if (a.indexOf(null) >= 0 || a[2] <= a[0] || a[3] <= a[1]) return;
+      r.zones.push({ id: sid(z.id, 'z'), label: txt(z.label, 'Keep clear'), x1: a[0], y1: a[1], x2: a[2], y2: a[3], door: typeof z.door === 'string' ? z.door : null, auto: z.auto === true });
+    });
+    if (full) {
+      r.layouts = cleanLayouts(o.layouts);
+      if (o.draft && Array.isArray(o.draft.items)) {
+        var h = hydrate(o.draft.items);
+        r.draft = { name: typeof o.draft.name === 'string' ? o.draft.name.slice(0, 60) : '', items: h ? clean(h) : [], t: Number(o.draft.t) || 0 };
+      }
+    }
+    return r;
   }
+  function roomGeom(r) { return { id: r.id, name: r.name, outline: r.outline, features: r.features, fixtures: r.fixtures, zones: r.zones }; }
+  /* Two rooms count as the same room when the id, outline and fixtures all match. */
+  function geomKey(r) { return JSON.stringify([r.id, r.outline, r.fixtures.map(function (f) { return [f.x, f.y, f.w, f.h]; })]); }
+
+  function loadStore() {
+    var raw = readLS(STORE_KEY), st = { v: 2, active: null, rooms: [] };
+    if (raw && Array.isArray(raw.rooms)) {
+      raw.rooms.forEach(function (o) { var r = sanitizeRoom(o, true); if (r && !st.rooms.some(function (x) { return x.id === r.id; })) st.rooms.push(r); });
+      st.active = raw.active;
+    }
+    if (!st.rooms.length) {
+      /* First visit, or data from the version before rooms existed: move it into the default room. */
+      var d = defaultRoom(), oldDraft = readLS(OLD_DRAFT_KEY);
+      d.layouts = cleanLayouts(readLS(OLD_SAVED_KEY));
+      if (oldDraft && Array.isArray(oldDraft.items)) {
+        var h = hydrate(oldDraft.items);
+        if (h) d.draft = { name: typeof oldDraft.name === 'string' ? oldDraft.name : '', items: clean(h), t: Number(oldDraft.t) || 0 };
+      }
+      st.rooms.push(d);
+    }
+    if (!st.rooms.some(function (r) { return r.id === st.active; })) st.active = st.rooms[0].id;
+    return st;
+  }
+
+  /* ---------- state ---------- */
+  var store = loadStore();
+  var room = null, items = [], name = '';
+  var mode = 'arrange';
   var selected = new Set(), undoStack = [], redoStack = [];
+  var ssel = null, sUndo = [], sRedo = [], drawing = null, vbLock = null;
   var opts = { snap: true, grid: true, zones: true, gaps: true };
-  var drag = null, pendingDelete = null, issueIds = new Set(), issues = [];
+  var drag = null, pendingDelete = null, pendingRoomDelete = false, issueIds = new Set(), issues = [];
+
+  function sync() { if (room) room.draft = { name: name, items: clean(items), t: Date.now() }; }
+  function saveStore() { sync(); store.active = room.id; writeLS(STORE_KEY, store); }
+  function loadRoom(r) {
+    room = r; items = hydrate(r.draft.items) || []; name = r.draft.name || '';
+    selected = new Set(); undoStack = []; redoStack = []; ssel = null; sUndo = []; sRedo = [];
+    drawing = null; vbLock = null; pendingDelete = null; pendingRoomDelete = false;
+  }
+  function setRoom(id) {
+    sync();
+    var r = store.rooms.filter(function (x) { return x.id === id; })[0] || store.rooms[0];
+    loadRoom(r); store.active = r.id; writeLS(STORE_KEY, store);
+    if (nameInput) nameInput.value = name;
+  }
+  function RB() { return bounds(room.outline); }
+  function spareLine() { return RB().maxY + SPARE_GAP; }
+  function isSpare(b) { return b.y1 >= spareLine(); }
+  function inRoom(b) {
+    var o = room.outline;
+    if (!pointIn((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2, o)) return false;
+    return !edges(o).some(function (e) {
+      return e.horiz ? (e.c > b.y1 + E && e.c < b.y2 - E && e.lo < b.x2 - E && e.hi > b.x1 + E)
+        : (e.c > b.x1 + E && e.c < b.x2 - E && e.lo < b.y2 - E && e.hi > b.y1 + E);
+    });
+  }
+
+  /* ---------- wall features, fixtures and zones ---------- */
+  function fHoriz(f) { return f.y1 === f.y2; }
+  function fLen(f) { return (f.x2 - f.x1) + (f.y2 - f.y1); }
+  /* +1 if the room lies on the larger-coordinate side of this wall segment, otherwise -1. */
+  function inwardSign(f) {
+    var mx = (f.x1 + f.x2) / 2, my = (f.y1 + f.y2) / 2;
+    return (fHoriz(f) ? pointIn(mx, my + 0.1, room.outline) : pointIn(mx + 0.1, my, room.outline)) ? 1 : -1;
+  }
+  function placeOnEdge(f, e, center, len) {
+    len = Math.min(len, e.hi - e.lo);
+    var lo = r2(clamp(snap(center - len / 2), e.lo, e.hi - len)), hi = r2(lo + len);
+    if (e.horiz) { f.x1 = lo; f.x2 = hi; f.y1 = f.y2 = e.c; } else { f.y1 = lo; f.y2 = hi; f.x1 = f.x2 = e.c; }
+  }
+  function nearestEdge(p) {
+    var best = null, bd = Infinity;
+    edges(room.outline).forEach(function (e) {
+      var along = e.horiz ? p.x : p.y, across = e.horiz ? p.y : p.x;
+      var dx = along < e.lo ? e.lo - along : along > e.hi ? along - e.hi : 0, dy = Math.abs(across - e.c);
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < bd) { bd = d; best = e; }
+    });
+    return best;
+  }
+  function doorZoneRect(f) {
+    var sg = inwardSign(f), depth = 3;
+    if (fHoriz(f)) return { x1: f.x1, x2: f.x2, y1: r2(Math.min(f.y1, f.y1 + sg * depth)), y2: r2(Math.max(f.y1, f.y1 + sg * depth)) };
+    return { y1: f.y1, y2: f.y2, x1: r2(Math.min(f.x1, f.x1 + sg * depth)), x2: r2(Math.max(f.x1, f.x1 + sg * depth)) };
+  }
+  function refreshDoorZones() {
+    room.zones = room.zones.filter(function (z) { return !z.door || room.features.some(function (f) { return f.id === z.door; }); });
+    room.zones.forEach(function (z) {
+      if (!z.auto || !z.door) return;
+      var f = room.features.filter(function (x) { return x.id === z.door; })[0], r = doorZoneRect(f);
+      z.x1 = r.x1; z.y1 = r.y1; z.x2 = r.x2; z.y2 = r.y2;
+    });
+  }
+  /* After the outline changes, put each wall feature back on the nearest matching wall. Returns how many had to be removed. */
+  function refitFeatures() {
+    var ed = edges(room.outline), dropped = 0;
+    room.features = room.features.filter(function (f) {
+      var h = fHoriz(f), c = h ? f.y1 : f.x1, lo = h ? f.x1 : f.y1, hi = h ? f.x2 : f.y2, best = null, bd = Infinity;
+      ed.forEach(function (e) {
+        if (e.horiz !== h || e.lo >= hi - E || e.hi <= lo + E) return;
+        var d = Math.abs(e.c - c);
+        if (d < bd) { bd = d; best = e; }
+      });
+      if (!best || bd > 2) { dropped++; return false; }
+      placeOnEdge(f, best, (lo + hi) / 2, hi - lo);
+      return true;
+    });
+    refreshDoorZones();
+    return dropped;
+  }
+  /* Real clear zones plus a 1′ strip in front of any window that furniture can't go under. */
+  function allZones() {
+    var out = room.zones.map(function (z) { return { x1: z.x1, y1: z.y1, x2: z.x2, y2: z.y2, label: z.label, id: z.id }; });
+    room.features.forEach(function (f) {
+      if (f.kind !== 'window' || f.under !== false) return;
+      var sg = inwardSign(f);
+      out.push(fHoriz(f) ? { x1: f.x1, x2: f.x2, y1: Math.min(f.y1, f.y1 + sg), y2: Math.max(f.y1, f.y1 + sg), label: 'Low window', id: null }
+        : { y1: f.y1, y2: f.y2, x1: Math.min(f.x1, f.x1 + sg), x2: Math.max(f.x1, f.x1 + sg), label: 'Low window', id: null });
+    });
+    return out;
+  }
+  function eachStoredItem(fn) {
+    items.forEach(fn);
+    room.layouts.forEach(function (l) { l.items.forEach(fn); });
+  }
+  /* Call after room.outline changes. Moves the outline back to start at 0,0, carries everything in the
+     room with it, keeps spare furniture in the spare strip, and refits wall features. */
+  function afterOutline(oldMaxY) {
+    var B = RB(), dx = r2(-B.minX), dy = r2(-B.minY), oldSpare = oldMaxY + SPARE_GAP, dSpare = r2((B.maxY + dy) - oldMaxY);
+    if (dx || dy) {
+      room.outline = room.outline.map(function (p) { return [r2(p[0] + dx), r2(p[1] + dy)]; });
+      room.features.forEach(function (f) { f.x1 = r2(f.x1 + dx); f.x2 = r2(f.x2 + dx); f.y1 = r2(f.y1 + dy); f.y2 = r2(f.y2 + dy); });
+      room.fixtures.forEach(function (f) { f.x = r2(f.x + dx); f.y = r2(f.y + dy); });
+      room.zones.forEach(function (z) { z.x1 = r2(z.x1 + dx); z.x2 = r2(z.x2 + dx); z.y1 = r2(z.y1 + dy); z.y2 = r2(z.y2 + dy); });
+    }
+    eachStoredItem(function (it) {
+      if (it.y >= oldSpare) it.y = r2(it.y + dSpare);
+      else { it.x = r2(it.x + dx); it.y = r2(it.y + dy); }
+    });
+    return refitFeatures();
+  }
 
   /* ---------- mount ---------- */
   var root = document.getElementById('root');
   root.appendChild(document.getElementById('shell').content.cloneNode(true));
   var $ = function (id) { return document.getElementById(id); };
   var svg = $('plan'), nameInput = $('layout-name'), statusEl = $('status');
-  nameInput.value = name;
   function setStatus(msg) { statusEl.textContent = msg || ''; }
-  if (startNote) setStatus(startNote);
+  loadRoom(store.rooms.filter(function (r) { return r.id === store.active; })[0]);
+  nameInput.value = name;
+  writeLS(STORE_KEY, store);
+  if (items.length) setStatus('Picked up where you left off in this browser.');
 
   ORDER.forEach(function (t) {
     var b = document.createElement('button');
@@ -345,49 +652,23 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     b.addEventListener('click', function () { addItem(t); });
     $('add-btns').appendChild(b);
   });
+  KIND_ORDER.forEach(function (k) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.id = 'feat-' + k; b.textContent = KINDS[k].name;
+    b.addEventListener('click', function () { addFeature(k); });
+    $('feat-btns').appendChild(b);
+  });
 
-  /* ---------- static drawing ---------- */
+  /* ---------- drawing the plan ---------- */
   function P(v) { return r2(v * S); }
   function pts(arr) { return arr.map(function (p) { return P(p[0]) + ',' + P(p[1]); }).join(' '); }
-  function drawStatic() {
-    var g = '', x, y;
-    for (x = 1; x < 28; x++) g += '<line class="' + (x % 5 ? 'gridl' : 'gridl5') + '" x1="' + P(x) + '" y1="0" x2="' + P(x) + '" y2="' + P(24.67) + '"/>';
-    for (y = 1; y < 25; y++) g += '<line class="' + (y % 5 ? 'gridl' : 'gridl5') + '" x1="0" y1="' + P(y) + '" x2="' + P(28) + '" y2="' + P(y) + '"/>';
-    var z = '';
-    ZONES.forEach(function (zn) {
-      z += '<rect class="zone" x="' + P(zn.x1) + '" y="' + P(zn.y1) + '" width="' + P(zn.x2 - zn.x1) + '" height="' + P(zn.y2 - zn.y1) + '"/>';
-    });
-    z += '<text class="zonelbl" x="' + P(22.54) + '" y="' + P(19.6) + '" text-anchor="middle">Keep clear</text>';
-    z += '<text class="zonelbl" x="' + P(26.75) + '" y="' + P(8.4) + '" text-anchor="middle" transform="rotate(90 ' + P(26.75) + ' ' + P(8.4) + ')">Board access</text>';
-    var s = '';
-    s += '<defs><clipPath id="roomclip"><polygon points="' + pts(ROOM) + '"/></clipPath></defs>';
-    s += '<rect class="park" x="' + P(PARK.x1) + '" y="' + P(PARK.y1) + '" width="' + P(PARK.x2 - PARK.x1) + '" height="' + P(PARK.y2 - PARK.y1) + '" rx="6"/>';
-    s += '<text class="roomlbl" x="' + P(0.2) + '" y="' + P(26.4) + '">Spare furniture (not in the room)</text>';
-    s += '<polygon class="floor" points="' + pts(ROOM) + '"/>';
-    s += '<g id="g-grid" clip-path="url(#roomclip)">' + g + '</g>';
-    s += '<g id="g-zones">' + z + '</g>';
-    s += '<polygon class="wall" points="' + pts(ROOM) + '"/>';
-    s += '<line x1="' + P(1) + '" y1="0" x2="' + P(27) + '" y2="0" stroke="var(--board)" stroke-width="6"/>';
-    s += '<text class="roomlbl" x="' + P(14) + '" y="' + P(-0.9) + '" text-anchor="middle">Large whiteboard · 28′</text>';
-    s += '<line x1="' + P(28) + '" y1="' + P(4.5) + '" x2="' + P(28) + '" y2="' + P(12.31) + '" stroke="var(--board)" stroke-width="6"/>';
-    s += '<text class="roomlbl" x="' + P(28.8) + '" y="' + P(8.35) + '" text-anchor="middle" transform="rotate(90 ' + P(28.8) + ' ' + P(8.35) + ')">Small whiteboard · wall 16′ 8½″</text>';
-    s += '<line x1="0" y1="' + P(1.5) + '" x2="0" y2="' + P(23) + '" stroke="var(--window)" stroke-width="4" stroke-dasharray="10 6"/>';
-    s += '<text class="roomlbl" x="' + P(-0.9) + '" y="' + P(12.3) + '" text-anchor="middle" transform="rotate(-90 ' + P(-0.9) + ' ' + P(12.3) + ')">Window wall (above desk height) · 24′ 8″</text>';
-    s += '<line x1="' + P(24.79) + '" y1="' + P(17.6) + '" x2="' + P(24.79) + '" y2="' + P(20.8) + '" stroke="var(--door)" stroke-width="6"/>';
-    s += '<text class="roomlbl" x="' + P(25.3) + '" y="' + P(19.4) + '">Door</text>';
-    s += '<line x1="' + P(20.29) + '" y1="' + P(22.17) + '" x2="' + P(24.79) + '" y2="' + P(22.17) + '" stroke="var(--closet)" stroke-width="6"/>';
-    s += '<text class="roomlbl" x="' + P(22.54) + '" y="' + P(23.2) + '" text-anchor="middle">Closet</text>';
-    s += '<text class="roomlbl" x="' + P(10) + '" y="' + P(25.5) + '" text-anchor="middle">Back wall · 20′</text>';
-    s += '<g class="scale" transform="translate(' + P(22) + ' ' + P(33.4) + ')"><line x1="0" y1="0" x2="' + P(5) + '" y2="0"/>';
-    for (x = 0; x <= 5; x++) s += '<line x1="' + P(x) + '" y1="' + (x % 5 ? -3 : -5) + '" x2="' + P(x) + '" y2="0"/>';
-    s += '<text x="0" y="13" text-anchor="middle">0</text><text x="' + P(5) + '" y="13" text-anchor="middle">5′</text></g>';
-    s += '<g id="g-items"></g><g id="g-over"></g>';
-    svg.innerHTML = s;
+  function viewBox() {
+    if (drawing) return { x: -40, y: -40, w: drawing.gw * S + 70, h: drawing.gh * S + 70 };
+    var B = RB();
+    return { x: P(B.minX) - 40, y: P(B.minY) - 50, w: Math.max(B.maxX - B.minX, 20) * S + 140, h: (B.maxY - B.minY + 9.3) * S + 50 };
   }
-  drawStatic();
-  var gItems = $('g-items'), gOver = $('g-over');
-
-  /* ---------- rendering ---------- */
+  function rectAttrs(b) { return 'x="' + P(b.x1) + '" y="' + P(b.y1) + '" width="' + P(b.x2 - b.x1) + '" height="' + P(b.y2 - b.y1) + '"'; }
+  function lineAttrs(x1, y1, x2, y2) { return 'x1="' + P(x1) + '" y1="' + P(y1) + '" x2="' + P(x2) + '" y2="' + P(y2) + '"'; }
   function itemSVG(it) {
     var T = TYPES[it.t], b = box(it), w = P(b.x2 - b.x1), h = P(b.y2 - b.y1);
     var sel = selected.has(it.id), bad = issueIds.has(it.id);
@@ -408,22 +689,47 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     if (sel) s += '<rect class="selring" x="-3" y="-3" width="' + r2(w + 6) + '" height="' + r2(h + 6) + '" rx="4"/>';
     return s + '</g>';
   }
+  function centeredText(cls, b, label) {
+    var cx = P((b.x1 + b.x2) / 2), cy = P((b.y1 + b.y2) / 2), vert = (b.y2 - b.y1) > (b.x2 - b.x1) * 1.2;
+    return '<text class="' + cls + '" x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central"' + (vert ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(label) + '</text>';
+  }
+  function featureSVG(f, setup) {
+    var K = KINDS[f.kind], la = lineAttrs(f.x1, f.y1, f.x2, f.y2), s = '<line class="feat ' + K.cls + '" ' + la + '/>';
+    if (f.kind !== 'outlet' && f.label) {
+      var mx = (f.x1 + f.x2) / 2, my = (f.y1 + f.y2) / 2, out = -inwardSign(f);
+      if (fHoriz(f)) s += '<text class="roomlbl" x="' + P(mx) + '" y="' + P(my + (out > 0 ? 1 : -0.5)) + '" text-anchor="middle">' + esc(f.label) + '</text>';
+      else {
+        var tx = P(mx + out * 0.55), ty = P(my);
+        s += '<text class="roomlbl" x="' + tx + '" y="' + ty + '" text-anchor="middle" transform="rotate(' + (out > 0 ? 90 : -90) + ' ' + tx + ' ' + ty + ')">' + esc(f.label) + '</text>';
+      }
+    }
+    if (setup) s += '<line class="feathit" data-k="feature" data-id="' + f.id + '" ' + la + '/>';
+    return s;
+  }
   function gapsFor(it) {
-    var b = box(it), cy = (b.y1 + b.y2) / 2, cx = (b.x1 + b.x2) / 2, res = [], lim;
-    var others = items.filter(function (o) { return o.id !== it.id; }).map(box).filter(function (o) { return !isSpare(o); });
-    function yov(o) { return o.y1 < b.y2 - E && o.y2 > b.y1 + E; }
-    function xov(o) { return o.x1 < b.x2 - E && o.x2 > b.x1 + E; }
-    lim = maxXRange(b.y1, b.y2); others.forEach(function (o) { if (yov(o) && o.x1 >= b.x2 - E) lim = Math.min(lim, o.x1); });
-    res.push({ x1: b.x2, y1: cy, x2: lim, y2: cy, v: false });
-    lim = 0; others.forEach(function (o) { if (yov(o) && o.x2 <= b.x1 + E) lim = Math.max(lim, o.x2); });
-    res.push({ x1: lim, y1: cy, x2: b.x1, y2: cy, v: false });
-    lim = 0; others.forEach(function (o) { if (xov(o) && o.y2 <= b.y1 + E) lim = Math.max(lim, o.y2); });
-    res.push({ x1: cx, y1: lim, x2: cx, y2: b.y1, v: true });
-    lim = maxYRange(b.x1, b.x2); others.forEach(function (o) { if (xov(o) && o.y1 >= b.y2 - E) lim = Math.min(lim, o.y1); });
-    res.push({ x1: cx, y1: b.y2, x2: cx, y2: lim, v: true });
+    var b = box(it), cy = (b.y1 + b.y2) / 2, cx = (b.x1 + b.x2) / 2, res = [], lim, ed = edges(room.outline);
+    var others = items.filter(function (o) { return o.id !== it.id; }).map(box).filter(function (o) { return !isSpare(o); }).concat(room.fixtures.map(fixBox));
+    function yov(lo, hi) { return lo < b.y2 - E && hi > b.y1 + E; }
+    function xov(lo, hi) { return lo < b.x2 - E && hi > b.x1 + E; }
+    lim = Infinity;
+    ed.forEach(function (e) { if (!e.horiz && e.c >= b.x2 - E && yov(e.lo, e.hi)) lim = Math.min(lim, e.c); });
+    others.forEach(function (o) { if (yov(o.y1, o.y2) && o.x1 >= b.x2 - E) lim = Math.min(lim, o.x1); });
+    if (isFinite(lim)) res.push({ x1: b.x2, y1: cy, x2: lim, y2: cy, v: false });
+    lim = -Infinity;
+    ed.forEach(function (e) { if (!e.horiz && e.c <= b.x1 + E && yov(e.lo, e.hi)) lim = Math.max(lim, e.c); });
+    others.forEach(function (o) { if (yov(o.y1, o.y2) && o.x2 <= b.x1 + E) lim = Math.max(lim, o.x2); });
+    if (isFinite(lim)) res.push({ x1: lim, y1: cy, x2: b.x1, y2: cy, v: false });
+    lim = -Infinity;
+    ed.forEach(function (e) { if (e.horiz && e.c <= b.y1 + E && xov(e.lo, e.hi)) lim = Math.max(lim, e.c); });
+    others.forEach(function (o) { if (xov(o.x1, o.x2) && o.y2 <= b.y1 + E) lim = Math.max(lim, o.y2); });
+    if (isFinite(lim)) res.push({ x1: cx, y1: lim, x2: cx, y2: b.y1, v: true });
+    lim = Infinity;
+    ed.forEach(function (e) { if (e.horiz && e.c >= b.y2 - E && xov(e.lo, e.hi)) lim = Math.min(lim, e.c); });
+    others.forEach(function (o) { if (xov(o.x1, o.x2) && o.y1 >= b.y2 - E) lim = Math.min(lim, o.y1); });
+    if (isFinite(lim)) res.push({ x1: cx, y1: b.y2, x2: cx, y2: lim, v: true });
     return res.filter(function (g) { return (g.v ? g.y2 - g.y1 : g.x2 - g.x1) > 0.04; });
   }
-  function overlaySVG() {
+  function arrangeOverlay() {
     var s = '';
     if (drag && drag.kind === 'box') {
       var x1 = Math.min(drag.start.x, drag.cur.x), y1 = Math.min(drag.start.y, drag.cur.y);
@@ -434,7 +740,7 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
       if (it && inRoom(box(it))) {
         gapsFor(it).forEach(function (g) {
           var len = g.v ? g.y2 - g.y1 : g.x2 - g.x1, mx = P((g.x1 + g.x2) / 2), my = P((g.y1 + g.y2) / 2), label = fmt(len), tw = label.length * 6.2 + 8;
-          s += '<line class="dimline" x1="' + P(g.x1) + '" y1="' + P(g.y1) + '" x2="' + P(g.x2) + '" y2="' + P(g.y2) + '"/>';
+          s += '<line class="dimline" ' + lineAttrs(g.x1, g.y1, g.x2, g.y2) + '/>';
           if (g.v) s += '<line class="dimtick" x1="' + (P(g.x1) - 4) + '" y1="' + P(g.y1) + '" x2="' + (P(g.x1) + 4) + '" y2="' + P(g.y1) + '"/><line class="dimtick" x1="' + (P(g.x2) - 4) + '" y1="' + P(g.y2) + '" x2="' + (P(g.x2) + 4) + '" y2="' + P(g.y2) + '"/>';
           else s += '<line class="dimtick" x1="' + P(g.x1) + '" y1="' + (P(g.y1) - 4) + '" x2="' + P(g.x1) + '" y2="' + (P(g.y1) + 4) + '"/><line class="dimtick" x1="' + P(g.x2) + '" y1="' + (P(g.y2) - 4) + '" x2="' + P(g.x2) + '" y2="' + (P(g.y2) + 4) + '"/>';
           s += '<rect class="dimbg" x="' + r2(mx - tw / 2) + '" y="' + r2(my - 7.5) + '" width="' + r2(tw) + '" height="15" rx="3"/>';
@@ -444,14 +750,98 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     }
     return s;
   }
+  function setupOverlay() {
+    var s = '', o = ssel && selObj();
+    if (!o) return s;
+    if (ssel.k === 'wall') s += '<line class="wallsel" ' + (o.horiz ? lineAttrs(o.lo, o.c, o.hi, o.c) : lineAttrs(o.c, o.lo, o.c, o.hi)) + '/>';
+    else if (ssel.k === 'feature') {
+      var pad = 0.3, b = { x1: o.x1 - pad, y1: o.y1 - pad, x2: o.x2 + pad, y2: o.y2 + pad };
+      s += '<rect class="setsel" ' + rectAttrs(b) + ' rx="4"/>';
+    } else {
+      var bx = ssel.k === 'fixture' ? fixBox(o) : o;
+      s += '<rect class="setsel" x="' + (P(bx.x1) - 3) + '" y="' + (P(bx.y1) - 3) + '" width="' + (P(bx.x2 - bx.x1) + 6) + '" height="' + (P(bx.y2 - bx.y1) + 6) + '" rx="4"/>';
+      s += '<rect class="handle" data-k="handle" x="' + (P(bx.x2) - 6) + '" y="' + (P(bx.y2) - 6) + '" width="12" height="12" rx="2"/>';
+    }
+    return s;
+  }
+  function planSVG() {
+    var o = room.outline, B = RB(), setup = mode === 'setup', s = '', g = '', x, y;
+    for (x = Math.floor(B.minX) + 1; x < B.maxX; x++) g += '<line class="' + (x % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(x, B.minY, x, B.maxY) + '/>';
+    for (y = Math.floor(B.minY) + 1; y < B.maxY; y++) g += '<line class="' + (y % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(B.minX, y, B.maxX, y) + '/>';
+    var parkW = Math.max(B.maxX - B.minX, 20), parkY = B.maxY + PARK_TOP;
+    s += '<defs><clipPath id="roomclip"><polygon points="' + pts(o) + '"/></clipPath></defs>';
+    s += '<rect class="park" x="' + P(B.minX) + '" y="' + P(parkY) + '" width="' + P(parkW) + '" height="' + P(PARK_H) + '" rx="6"/>';
+    s += '<text class="roomlbl" x="' + P(B.minX + 0.2) + '" y="' + P(parkY - 0.35) + '">Spare furniture (not in the room)</text>';
+    s += '<polygon class="floor" points="' + pts(o) + '"/>';
+    if (opts.grid) s += '<g id="g-grid" clip-path="url(#roomclip)">' + g + '</g>';
+    if (opts.zones || setup) {
+      s += '<g id="g-zones">';
+      allZones().forEach(function (z) {
+        s += '<rect class="zone" ' + (z.id ? 'data-k="zone" data-id="' + z.id + '" ' : '') + rectAttrs(z) + '/>' + centeredText('zonelbl', z, z.label);
+      });
+      s += '</g>';
+    }
+    s += '<polygon class="wall" points="' + pts(o) + '"/>';
+    room.fixtures.forEach(function (f) {
+      var b = fixBox(f);
+      s += '<g class="fix" data-k="fixture" data-id="' + f.id + '"><rect class="body" ' + rectAttrs(b) + ' rx="2"/>' + centeredText('', b, f.name) + '</g>';
+    });
+    if (setup) {
+      edges(o).forEach(function (e) {
+        var mid = (e.lo + e.hi) / 2, probe = { x1: e.horiz ? mid : e.c, y1: e.horiz ? e.c : mid, x2: e.horiz ? mid : e.c, y2: e.horiz ? e.c : mid }, inw = inwardSign(probe);
+        s += '<line class="wallhit ' + (e.horiz ? 'h' : 'v') + '" data-k="wall" data-id="' + e.i + '" ' + (e.horiz ? lineAttrs(e.lo, e.c, e.hi, e.c) : lineAttrs(e.c, e.lo, e.c, e.hi)) + '/>';
+        /* The measurement is also a handle for the wall, since boards and windows can cover the wall line itself. */
+        var lab = fmtFine(e.hi - e.lo), pw = lab.length * 6.2 + 12;
+        var tx = e.horiz ? P(mid) : P(e.c) + inw * 13, ty = e.horiz ? P(e.c) + inw * 13 : P(mid);
+        s += '<g transform="translate(' + tx + ' ' + ty + ')' + (e.horiz ? '' : ' rotate(-90)') + '"><rect class="wallpill ' + (e.horiz ? 'h' : 'v') + '" data-k="wall" data-id="' + e.i + '" x="' + r2(-pw / 2) + '" y="-8" width="' + r2(pw) + '" height="16" rx="4"/>' +
+          '<text class="walllen" x="0" y="0" text-anchor="middle" dominant-baseline="central">' + lab + '</text></g>';
+      });
+    }
+    room.features.forEach(function (f) { s += featureSVG(f, setup); });
+    var a = '', bsel = '';
+    items.forEach(function (it) { if (selected.has(it.id)) bsel += itemSVG(it); else a += itemSVG(it); });
+    s += '<g id="g-items">' + a + bsel + '</g>';
+    s += '<g id="g-over">' + (setup ? setupOverlay() : arrangeOverlay()) + '</g>';
+    s += '<g class="scale" transform="translate(' + P(B.minX + parkW - 6) + ' ' + P(B.maxY + 8.73) + ')"><line x1="0" y1="0" x2="' + P(5) + '" y2="0"/>';
+    for (x = 0; x <= 5; x++) s += '<line x1="' + P(x) + '" y1="' + (x % 5 ? -3 : -5) + '" x2="' + P(x) + '" y2="0"/>';
+    s += '<text x="0" y="13" text-anchor="middle">0</text><text x="' + P(5) + '" y="13" text-anchor="middle">5′</text></g>';
+    return s;
+  }
+  function drawPath(list) { return list.map(function (p, i) { return (i ? 'L' : 'M') + P(p[0]) + ' ' + P(p[1]); }).join(' '); }
+  function drawingSVG() {
+    var d = drawing, s = '', x, y;
+    s += '<rect class="floor" x="0" y="0" width="' + P(d.gw) + '" height="' + P(d.gh) + '"/>';
+    for (x = 0; x <= d.gw; x++) {
+      s += '<line class="' + (x % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(x, 0, x, d.gh) + '/>';
+      if (x % 5 === 0) s += '<text class="ruler" x="' + P(x) + '" y="-8" text-anchor="middle">' + x + '′</text>';
+    }
+    for (y = 0; y <= d.gh; y++) {
+      s += '<line class="' + (y % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(0, y, d.gw, y) + '/>';
+      if (y % 5 === 0 && y) s += '<text class="ruler" x="-8" y="' + P(y) + '" text-anchor="end" dominant-baseline="central">' + y + '′</text>';
+    }
+    s += '<polygon class="oldroom" points="' + pts(room.outline) + '"/>';
+    if (d.pts.length) {
+      var list = d.pts.slice(), first = d.pts[0], last = d.pts[d.pts.length - 1];
+      s += '<path class="drawline" d="' + drawPath(list) + '"/>';
+      if (d.cur) {
+        s += '<path class="drawprev" d="' + drawPath([last, d.cur]) + '"/>';
+        var len = Math.abs(d.cur[0] - last[0]) + Math.abs(d.cur[1] - last[1]);
+        if (len > 0) s += '<text class="dimtxt" x="' + (P(d.cur[0]) + 10) + '" y="' + (P(d.cur[1]) - 10) + '">' + fmtFine(len) + '</text>';
+      }
+      d.pts.forEach(function (p) { s += '<circle class="drawpt" cx="' + P(p[0]) + '" cy="' + P(p[1]) + '" r="3.5"/>'; });
+      s += '<circle class="drawstart" cx="' + P(first[0]) + '" cy="' + P(first[1]) + '" r="7"/>';
+    } else if (d.cur) s += '<circle class="drawpt" cx="' + P(d.cur[0]) + '" cy="' + P(d.cur[1]) + '" r="3.5"/>';
+    return s;
+  }
   function computeIssues() {
     issues = []; issueIds = new Set();
-    var live = [];
+    var live = [], zones = allZones(), fixes = room.fixtures;
     items.forEach(function (it) {
       var b = box(it), nm = TYPES[it.t].name;
       if (isSpare(b)) return;
       if (!inRoom(b)) issues.push({ ids: [it.id], text: nm + ' is partly outside the room' });
-      ZONES.forEach(function (z) { if (overlap(b, z) > 0.02) issues.push({ ids: [it.id], text: nm + ' ' + z.msg }); });
+      zones.forEach(function (z) { if (overlap(b, z) > 0.02) issues.push({ ids: [it.id], text: nm + ' is in a clear zone (' + z.label + ')' }); });
+      fixes.forEach(function (f) { if (overlap(b, fixBox(f)) > 0.02) issues.push({ ids: [it.id], text: nm + ' overlaps ' + f.name }); });
       live.push({ it: it, b: b });
     });
     for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) {
@@ -461,13 +851,13 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
   }
   function renderPlan() {
     computeIssues();
-    var a = '', bsel = '';
-    items.forEach(function (it) { if (selected.has(it.id)) bsel += itemSVG(it); else a += itemSVG(it); });
-    gItems.innerHTML = a + bsel;
-    gOver.innerHTML = overlaySVG();
-    $('g-grid').style.display = opts.grid ? '' : 'none';
-    $('g-zones').style.display = opts.zones ? '' : 'none';
+    var vb = vbLock || viewBox();
+    svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
+    svg.setAttribute('class', mode + (drag ? ' dragging' : ''));
+    svg.innerHTML = drawing ? drawingSVG() : planSVG();
   }
+
+  /* ---------- side panels ---------- */
   function renderPanel() {
     var counts = {}, spare = {};
     ORDER.forEach(function (t) { counts[t] = 0; spare[t] = 0; });
@@ -482,7 +872,7 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     $('inventory').innerHTML = inv;
 
     var ck = $('checks'); ck.innerHTML = '';
-    if (!issues.length) { ck.innerHTML = '<li class="ok">No overlaps, and the door and small whiteboard are clear.</li>'; }
+    if (!issues.length) { ck.innerHTML = '<li class="ok">No overlaps, and the clear zones are empty.</li>'; }
     else {
       issues.slice(0, 10).forEach(function (x) {
         var li = document.createElement('li'), b = document.createElement('button');
@@ -497,9 +887,9 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     if (!selected.size) si.innerHTML = '<span class="muted">Click a piece to select it. Drag across empty floor to select several.</span>';
     else if (selected.size === 1) {
       var it = find(Array.from(selected)[0]); var b = box(it), T = TYPES[it.t];
-      var facing = it.t === 'chair' ? '<span>Student faces ' + ['the large whiteboard', 'the small-whiteboard side', 'the back wall', 'the window'][it.r] + '</span>' : '';
-      si.innerHTML = '<strong>' + esc(T.name) + '</strong><span class="mono">' + fmt(b.x2 - b.x1) + ' × ' + fmt(b.y2 - b.y1) + '</span>' +
-        (isSpare(b) ? '<span class="muted">In the spare area</span>' : '<span class="mono">' + fmt(b.x1) + ' from window wall · ' + fmt(b.y1) + ' from front wall</span>') + facing +
+      var facing = it.t === 'chair' ? '<span>Student faces the ' + ['top', 'right', 'bottom', 'left'][it.r] + ' of the plan</span>' : '';
+      si.innerHTML = '<strong>' + esc(T.name) + '</strong><span class="mono">' + fmtFine(b.x2 - b.x1) + ' × ' + fmtFine(b.y2 - b.y1) + '</span>' +
+        (isSpare(b) ? '<span class="muted">In the spare area</span>' : '<span class="mono">' + fmt(b.x1) + ' from the left edge · ' + fmt(b.y1) + ' from the top edge</span>') + facing +
         (opts.gaps && !isSpare(b) ? '<span class="muted">Orange lines show the open space to the nearest piece or wall.</span>' : '');
     } else {
       var c = {}; selected.forEach(function (id) { var x = find(id); if (x) c[x.t] = (c[x.t] || 0) + 1; });
@@ -512,11 +902,11 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
   }
   function renderSaved() {
     var ul = $('saved'); ul.innerHTML = '';
-    var list = getSaved();
-    if (!list.length) { ul.innerHTML = '<li class="empty">Nothing saved yet. Name your layout above and choose Save layout.</li>'; return; }
+    var list = room.layouts, line = spareLine();
+    if (!list.length) { ul.innerHTML = '<li class="empty">Nothing saved for this room yet. Name your layout above and choose Save layout.</li>'; return; }
     list.forEach(function (s) {
       var li = document.createElement('li');
-      var seats = s.items.filter(function (o) { return o.t === 'chair' && !(o.y >= 25.4); }).length;
+      var seats = s.items.filter(function (o) { return o.t === 'chair' && !(o.y >= line); }).length;
       var when = s.savedAt ? new Date(s.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
       li.innerHTML = '<div><span class="nm"></span></div><div class="meta">' + seats + ' seats' + (when ? ' · saved ' + esc(when) : '') + '</div>';
       li.querySelector('.nm').textContent = s.name;
@@ -533,20 +923,116 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
       db.addEventListener('click', function () {
         if (pendingDelete !== key) { pendingDelete = key; renderSaved(); return; }
         pendingDelete = null;
-        writeLS(LOCAL_SAVED_KEY, getSaved().filter(function (x) { return x.name !== s.name; }));
-        setStatus('Deleted "' + s.name + '".'); renderSaved();
+        room.layouts = room.layouts.filter(function (x) { return x.name !== s.name; });
+        saveStore(); setStatus('Deleted "' + s.name + '".'); renderSaved();
       });
       row.appendChild(lb); row.appendChild(db); li.appendChild(row); ul.appendChild(li);
     });
   }
-  function renderAll() { renderPlan(); renderPanel(); }
+  /* A feet-and-inches pair of inputs. */
+  function lenHTML(id, ft) {
+    var q = Math.max(0, Math.round(ft * 48)) / 4, f = Math.floor(q / 12), i = q - f * 12;
+    return '<span class="len"><input type="number" id="' + id + '-ft" min="0" step="1" value="' + f + '" aria-label="feet"> ft <input type="number" id="' + id + '-in" min="0" max="11.75" step="0.25" value="' + i + '" aria-label="inches"> in</span>';
+  }
+  function readLen(id) {
+    var f = parseFloat($(id + '-ft').value), i = parseFloat($(id + '-in').value);
+    return r2((isFinite(f) ? Math.max(0, f) : 0) + (isFinite(i) ? Math.max(0, i) : 0) / 12);
+  }
+  function onChange(id, fn) { var el = $(id); if (el) el.addEventListener('change', fn); }
+  function onClick(id, fn) { var el = $(id); if (el) el.addEventListener('click', fn); }
+  function selObj() {
+    if (!ssel) return null;
+    if (ssel.k === 'wall') return edges(room.outline)[Number(ssel.id)] || null;
+    var list = ssel.k === 'feature' ? room.features : ssel.k === 'fixture' ? room.fixtures : room.zones;
+    return list.filter(function (x) { return x.id === ssel.id; })[0] || null;
+  }
+  function renderSetupPanel() {
+    var B = RB(), rf = $('roomform'), sp = $('setupsel'), o = selObj(), h;
+    rf.innerHTML = '<label class="row"><span>Room name</span><input type="text" id="room-name" maxlength="60" autocomplete="off"></label>' +
+      '<div class="row"><span>Start over as a plain rectangle</span><div>Width ' + lenHTML('rect-w', B.maxX) + '</div><div>Length ' + lenHTML('rect-h', B.maxY) + '</div></div>' +
+      '<div><button type="button" id="btn-rect">Make rectangle</button></div>';
+    $('room-name').value = room.name;
+    onChange('room-name', function () { var v = $('room-name').value.trim().slice(0, 60); if (!v) return; sCommit(); room.name = v; changed(); });
+    onClick('btn-rect', function () {
+      var w = readLen('rect-w'), l = readLen('rect-h');
+      if (w < 4 || l < 4 || w > 200 || l > 200) { setStatus('Enter a width and length between 4 and 200 feet.'); return; }
+      setOutline([[0, 0], [w, 0], [w, l], [0, l]], 'The room is now a ' + fmtFine(w) + ' × ' + fmtFine(l) + ' rectangle.');
+    });
 
-  /* ---------- editing ---------- */
+    if (!o) { ssel = null; sp.innerHTML = '<span class="muted">Click a wall\'s length, a board, a door, a fixture or a clear zone to change it.</span>'; }
+    else if (ssel.k === 'wall') {
+      sp.innerHTML = '<strong>Wall</strong><div class="row"><span>Exact length</span>' + lenHTML('wall-len', o.hi - o.lo) + '</div><div><button type="button" id="btn-wall-len">Set length</button></div><span class="muted">Or drag the wall on the plan. The far end of this wall moves.</span>';
+      onClick('btn-wall-len', function () { setWallLength(Number(ssel.id), readLen('wall-len')); });
+    } else if (ssel.k === 'feature') {
+      h = '<strong>' + esc(KINDS[o.kind].name) + '</strong>';
+      if (o.kind !== 'outlet') h += '<label class="row"><span>Label</span><input type="text" id="f-label" maxlength="40" autocomplete="off"></label>';
+      h += '<div class="row"><span>Length along the wall</span>' + lenHTML('f-len', fLen(o)) + '</div>';
+      if (o.kind === 'window') h += '<label class="check"><input type="checkbox" id="f-under"' + (o.under !== false ? ' checked' : '') + '> Furniture can go under this window</label>';
+      h += '<div><button type="button" id="btn-sdel" class="danger">Delete</button></div>';
+      sp.innerHTML = h;
+      if ($('f-label')) $('f-label').value = o.label;
+      onChange('f-label', function () { sCommit(); o.label = $('f-label').value.trim().slice(0, 40); changed(); });
+      function setLen() {
+        var L = readLen('f-len'); if (L < 0.25) return;
+        var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), c = fHoriz(o) ? (o.x1 + o.x2) / 2 : (o.y1 + o.y2) / 2;
+        sCommit(); placeOnEdge(o, e, c, L); refreshDoorZones(); changed();
+      }
+      onChange('f-len-ft', setLen); onChange('f-len-in', setLen);
+      onChange('f-under', function () { sCommit(); o.under = $('f-under').checked; changed(); });
+      onClick('btn-sdel', deleteSetupSel);
+    } else if (ssel.k === 'fixture') {
+      sp.innerHTML = '<strong>Fixture</strong><label class="row"><span>Name</span><input type="text" id="x-name" maxlength="40" autocomplete="off" list="x-names"></label>' +
+        '<datalist id="x-names"><option value="Countertop"><option value="Sink"><option value="Projector screen"><option value="Cabinet"><option value="Pillar"></datalist>' +
+        '<div class="row"><span>Width</span>' + lenHTML('x-w', o.w) + '</div><div class="row"><span>Depth</span>' + lenHTML('x-h', o.h) + '</div>' +
+        '<div class="btns"><button type="button" id="btn-xrot">Rotate 90°</button><button type="button" id="btn-sdel" class="danger">Delete</button></div>';
+      $('x-name').value = o.name;
+      onChange('x-name', function () { var v = $('x-name').value.trim().slice(0, 40); if (!v) return; sCommit(); o.name = v; changed(); });
+      function setSize() { var w = readLen('x-w'), d = readLen('x-h'); if (w < 0.25 || d < 0.25) return; sCommit(); o.w = w; o.h = d; changed(); }
+      ['x-w-ft', 'x-w-in', 'x-h-ft', 'x-h-in'].forEach(function (id) { onChange(id, setSize); });
+      onClick('btn-xrot', function () { sCommit(); var cx = o.x + o.w / 2, cy = o.y + o.h / 2, w = o.w; o.w = o.h; o.h = w; o.x = r2(cx - o.w / 2); o.y = r2(cy - o.h / 2); changed(); });
+      onClick('btn-sdel', deleteSetupSel);
+    } else {
+      sp.innerHTML = '<strong>Clear zone</strong><label class="row"><span>Label</span><input type="text" id="z-label" maxlength="40" autocomplete="off"></label>' +
+        '<div class="row"><span>Width</span>' + lenHTML('z-w', o.x2 - o.x1) + '</div><div class="row"><span>Depth</span>' + lenHTML('z-h', o.y2 - o.y1) + '</div>' +
+        '<div><button type="button" id="btn-sdel" class="danger">Delete</button></div>';
+      $('z-label').value = o.label;
+      onChange('z-label', function () { var v = $('z-label').value.trim().slice(0, 40); if (!v) return; sCommit(); o.label = v; changed(); });
+      function setZone() { var w = readLen('z-w'), d = readLen('z-h'); if (w < 0.25 || d < 0.25) return; sCommit(); o.x2 = r2(o.x1 + w); o.y2 = r2(o.y1 + d); o.auto = false; changed(); }
+      ['z-w-ft', 'z-w-in', 'z-h-ft', 'z-h-in'].forEach(function (id) { onChange(id, setZone); });
+      onClick('btn-sdel', deleteSetupSel);
+    }
+    $('btn-sundo').disabled = !sUndo.length; $('btn-sredo').disabled = !sRedo.length;
+    $('btn-room-del').disabled = store.rooms.length < 2;
+    $('btn-room-del').textContent = pendingRoomDelete ? 'Confirm delete' : 'Delete room';
+    $('btn-room-del').classList.toggle('confirm', pendingRoomDelete);
+    $('btn-draw-finish').disabled = !drawing || drawing.pts.length < 3;
+    $('btn-draw-back').disabled = !drawing || !drawing.pts.length;
+  }
+  function renderChrome() {
+    var B = RB(), setup = mode === 'setup', pick = $('room-pick');
+    pick.innerHTML = store.rooms.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === room.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '<option value="+new">+ New room…</option>';
+    pick.disabled = !!drawing;
+    $('sub').innerHTML = esc(room.name) + ' · <span class="mono">' + fmtFine(B.maxX) + ' × ' + fmtFine(B.maxY) + '</span>, drawn to scale. ' + (setup ? 'You are setting up the room.' : 'Drag furniture to move it.');
+    $('btn-setup').textContent = setup ? 'Done' : 'Room setup';
+    $('btn-setup').classList.toggle('primary', setup);
+    $('btn-setup').disabled = !!drawing;
+    $('savebox').hidden = setup;
+    $('tb-arrange').hidden = setup;
+    $('tb-setup').hidden = !setup || !!drawing;
+    $('tb-draw').hidden = !drawing;
+    $('panel-arrange').hidden = setup;
+    $('panel-setup').hidden = !setup;
+    $('hint').innerHTML = drawing ? 'Click each corner of the room in order, going around the walls. Every wall is straight across or straight up and down. Click the first corner again, or choose Finish, to close the room. One square is 1′.'
+      : setup ? 'One square is 1′. Corners and pieces snap to 3″. Your furniture is shown faded and can\'t be moved on this screen.'
+      : 'Shift-click or drag across empty floor to select several pieces. <kbd>R</kbd> rotate · <kbd>D</kbd> duplicate · <kbd>Del</kbd> delete · arrows nudge 3″ (<kbd>Shift</kbd> for 1′) · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo. Furniture in the gray strip below the room is spare and isn\'t counted.';
+  }
+  function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); }
+
+  /* ---------- arranging furniture ---------- */
   function find(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
   function snapshot() { return JSON.stringify(items); }
   function commit() { undoStack.push(snapshot()); if (undoStack.length > 120) undoStack.shift(); redoStack = []; }
-  function saveDraft() { writeLS(DRAFT_KEY, { name: name, items: clean(items), t: Date.now() }); }
-  function changed() { saveDraft(); renderAll(); }
+  function changed() { saveStore(); renderAll(); }
   function restore(json) {
     items = JSON.parse(json);
     items.forEach(function (it) { var n = parseInt(String(it.id).slice(1), 10); if (n >= uid) uid = n + 1; });
@@ -554,11 +1040,15 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
   }
   function undo() { if (!undoStack.length) return; redoStack.push(snapshot()); restore(undoStack.pop()); changed(); }
   function redo() { if (!redoStack.length) return; undoStack.push(snapshot()); restore(redoStack.pop()); changed(); }
+  function roomCenter() {
+    var B = RB(), c = { x: (B.minX + B.maxX) / 2, y: (B.minY + B.maxY) / 2 };
+    if (pointIn(c.x, c.y, room.outline)) return c;
+    return { x: B.minX + (B.maxX - B.minX) / 4, y: B.minY + (B.maxY - B.minY) / 4 };
+  }
   function addItem(t) {
     commit();
-    var n = items.filter(function (x) { return x.t === t; }).length % 6;
-    var d = TYPES[t];
-    var it = mk(t, r2(12 - d.w / 2 + n * 0.5), r2(11 - d.h / 2 + n * 0.5), 0);
+    var n = items.filter(function (x) { return x.t === t; }).length % 6, d = TYPES[t], c = roomCenter();
+    var it = mk(t, r2(snap(c.x - d.w / 2) + n * 0.5), r2(snap(c.y - d.h / 2) + n * 0.5), 0);
     items.push(it); selected = new Set([it.id]); changed();
   }
   function rotateSel() {
@@ -590,16 +1080,264 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     changed();
   }
 
+  /* ---------- room setup ---------- */
+  function roomSnap() { sync(); return JSON.stringify(room); }
+  function sCommit() { sUndo.push(roomSnap()); if (sUndo.length > 60) sUndo.shift(); sRedo = []; }
+  function sRestore(json) {
+    var r = JSON.parse(json), i = store.rooms.indexOf(room);
+    store.rooms[i] = r; room = r; items = hydrate(r.draft.items) || []; name = r.draft.name || '';
+    ssel = null; selected = new Set(); undoStack = []; redoStack = [];
+  }
+  function sUndoDo() { if (!sUndo.length) return; sRedo.push(roomSnap()); sRestore(sUndo.pop()); changed(); }
+  function sRedoDo() { if (!sRedo.length) return; sUndo.push(roomSnap()); sRestore(sRedo.pop()); changed(); }
+  function setMode(m) {
+    mode = m; drawing = null; vbLock = null; drag = null; ssel = null; selected = new Set(); pendingRoomDelete = false;
+    renderAll();
+  }
+  function droppedNote(n) { return n ? ' ' + n + (n === 1 ? ' wall feature was' : ' wall features were') + ' removed because no wall is near enough.' : ''; }
+  function setOutline(o, msg) {
+    o = cleanOutline(o);
+    if (!validOutline(o)) { setStatus('That shape doesn\'t work as a room. Nothing was changed.'); return false; }
+    sCommit();
+    var oldMaxY = RB().maxY;
+    room.outline = o; ssel = null;
+    var n = afterOutline(oldMaxY);
+    changed(); setStatus(msg + droppedNote(n));
+    return true;
+  }
+  function featuresOn(e) {
+    return room.features.filter(function (f) { return fHoriz(f) === e.horiz && Math.abs((e.horiz ? f.y1 : f.x1) - e.c) < E && (e.horiz ? f.x1 : f.y1) >= e.lo - E && (e.horiz ? f.x2 : f.y2) <= e.hi + E; });
+  }
+  function shiftFeatures(list, horiz, delta) {
+    list.forEach(function (f) { if (horiz) { f.y1 = f.y2 = r2(f.y1 + delta); } else { f.x1 = f.x2 = r2(f.x1 + delta); } });
+  }
+  function setWallLength(i, L) {
+    var ed = edges(room.outline), e = ed[i];
+    if (!e || L < 0.25) { setStatus('Enter a length of at least 3″.'); return; }
+    var delta = r2((L - (e.hi - e.lo)) * e.dir), j = (i + 1) % ed.length;
+    if (!delta) return;
+    var o = cleanOutline(moveEdge(room.outline, j, delta));
+    if (!validOutline(o)) { setStatus('That length doesn\'t fit with the walls next to it. Change a neighboring wall first.'); return; }
+    sCommit();
+    var oldMaxY = RB().maxY, keep = o.length === room.outline.length;
+    shiftFeatures(featuresOn(ed[j]), ed[j].horiz, delta);
+    room.outline = o;
+    var n = afterOutline(oldMaxY);
+    if (!keep) ssel = null;
+    changed(); setStatus('The wall is now ' + fmtFine(L) + ' long.' + droppedNote(n));
+  }
+  function flipRoom(lr) {
+    sCommit();
+    var B = RB(), W = B.maxX, H = B.maxY, line = spareLine();
+    room.outline = room.outline.map(function (p) { return lr ? [r2(W - p[0]), p[1]] : [p[0], r2(H - p[1])]; }).reverse();
+    room.features.forEach(function (f) {
+      var a;
+      if (lr) { a = r2(W - f.x2); f.x2 = r2(W - f.x1); f.x1 = a; } else { a = r2(H - f.y2); f.y2 = r2(H - f.y1); f.y1 = a; }
+    });
+    room.fixtures.forEach(function (f) { if (lr) f.x = r2(W - (f.x + f.w)); else f.y = r2(H - (f.y + f.h)); });
+    room.zones.forEach(function (z) {
+      var a;
+      if (lr) { a = r2(W - z.x2); z.x2 = r2(W - z.x1); z.x1 = a; } else { a = r2(H - z.y2); z.y2 = r2(H - z.y1); z.y1 = a; }
+    });
+    eachStoredItem(function (it) {
+      if (it.y >= line) return;
+      var d = dims(it);
+      if (lr) { it.x = r2(W - (it.x + d.w)); if (it.r % 2) it.r = (it.r + 2) % 4; }
+      else { it.y = r2(H - (it.y + d.h)); if (it.r % 2 === 0) it.r = (it.r + 2) % 4; }
+    });
+    ssel = null; changed();
+    setStatus('Flipped the room ' + (lr ? 'left to right' : 'front to back') + ', with everything in it.');
+  }
+  function addFeature(kind) {
+    var ed = edges(room.outline), e = (ssel && ssel.k === 'wall' && ed[Number(ssel.id)]) || ed.slice().sort(function (a, b) { return (b.hi - b.lo) - (a.hi - a.lo); })[0];
+    sCommit();
+    var f = { id: newId('f'), kind: kind, label: kind === 'outlet' ? '' : KINDS[kind].name, x1: 0, y1: 0, x2: 0, y2: 0, under: true };
+    placeOnEdge(f, e, (e.lo + e.hi) / 2, KINDS[kind].len);
+    room.features.push(f);
+    if (kind === 'door') { var z = doorZoneRect(f); room.zones.push({ id: newId('z'), label: 'Keep clear', x1: z.x1, y1: z.y1, x2: z.x2, y2: z.y2, door: f.id, auto: true }); }
+    ssel = { k: 'feature', id: f.id }; changed();
+    setStatus('Added a ' + KINDS[kind].name.toLowerCase() + '. Drag it along the walls to where it belongs.');
+  }
+  function addFixture() {
+    sCommit();
+    var c = roomCenter(), f = { id: newId('x'), name: 'Fixture', x: r2(snap(c.x - 2)), y: r2(snap(c.y - 1)), w: 4, h: 2 };
+    room.fixtures.push(f); ssel = { k: 'fixture', id: f.id }; changed();
+    setStatus('Added a fixture. Name it and set its size on the right, then drag it into place.');
+  }
+  function addZone() {
+    sCommit();
+    var c = roomCenter(), x = r2(snap(c.x - 1.5)), y = r2(snap(c.y - 1.5));
+    var z = { id: newId('z'), label: 'Keep clear', x1: x, y1: y, x2: x + 3, y2: y + 3, door: null, auto: false };
+    room.zones.push(z); ssel = { k: 'zone', id: z.id }; changed();
+    setStatus('Added a clear zone. Drag it into place, and drag its corner to resize it.');
+  }
+  function deleteSetupSel() {
+    if (!ssel || ssel.k === 'wall') return;
+    sCommit();
+    var id = ssel.id;
+    if (ssel.k === 'feature') { room.features = room.features.filter(function (f) { return f.id !== id; }); refreshDoorZones(); }
+    else if (ssel.k === 'fixture') room.fixtures = room.fixtures.filter(function (f) { return f.id !== id; });
+    else room.zones = room.zones.filter(function (z) { return z.id !== id; });
+    ssel = null; changed();
+  }
+  function nudgeSetup(dx, dy) {
+    var o = selObj(); if (!o) return;
+    if (ssel.k === 'wall') {
+      var d = o.horiz ? dy : dx; if (!d) return;
+      var out = cleanOutline(moveEdge(room.outline, o.i, d));
+      if (!validOutline(out) || out.length !== room.outline.length) return;
+      sCommit();
+      var oldMaxY = RB().maxY;
+      shiftFeatures(featuresOn(o), o.horiz, d);
+      room.outline = out; afterOutline(oldMaxY); ssel = null; changed();
+      return;
+    }
+    sCommit();
+    if (ssel.k === 'feature') {
+      var along = fHoriz(o) ? dx : dy, e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 });
+      placeOnEdge(o, e, (fHoriz(o) ? (o.x1 + o.x2) / 2 : (o.y1 + o.y2) / 2) + along, fLen(o)); refreshDoorZones();
+    } else if (ssel.k === 'fixture') { o.x = r2(o.x + dx); o.y = r2(o.y + dy); }
+    else { o.x1 = r2(o.x1 + dx); o.x2 = r2(o.x2 + dx); o.y1 = r2(o.y1 + dy); o.y2 = r2(o.y2 + dy); o.auto = false; }
+    changed();
+  }
+
+  /* drawing a new outline, corner by corner */
+  function startDraw() {
+    var B = RB();
+    drawing = { pts: [], cur: null, gw: Math.max(40, Math.ceil(B.maxX) + 10), gh: Math.max(30, Math.ceil(B.maxY) + 10) };
+    ssel = null; renderAll();
+    setStatus('Click the first corner of the room.');
+  }
+  /* The next corner must turn 90° from the previous wall. */
+  function drawNext(p) {
+    var d = drawing, q = [clamp(snap(p.x), 0, d.gw), clamp(snap(p.y), 0, d.gh)], n = d.pts.length;
+    if (!n) return q;
+    var last = d.pts[n - 1];
+    if (n === 1) { if (Math.abs(q[0] - last[0]) >= Math.abs(q[1] - last[1])) q[1] = last[1]; else q[0] = last[0]; }
+    else if (d.pts[n - 2][1] === last[1]) q[0] = last[0];
+    else q[1] = last[1];
+    /* Line up with the first corner when close to it, so the room closes cleanly. */
+    var first = d.pts[0];
+    if (n >= 2) {
+      if (q[0] !== last[0] && Math.abs(q[0] - first[0]) <= 0.5) q[0] = first[0];
+      if (q[1] !== last[1] && Math.abs(q[1] - first[1]) <= 0.5) q[1] = first[1];
+    }
+    return q;
+  }
+  function closedDrawing() {
+    var p = drawing.pts.slice(), n = p.length, first = p[0], last = p[n - 1];
+    p.push(p[n - 2][1] === last[1] ? [last[0], first[1]] : [first[0], last[1]]);
+    return cleanOutline(p);
+  }
+  function finishDraw() {
+    if (!drawing || drawing.pts.length < 3) return;
+    var o = closedDrawing();
+    if (!validOutline(o)) { setStatus('Those corners don\'t close into a room yet. Add more corners, remove the last one, or cancel.'); return; }
+    drawing = null;
+    setOutline(o, 'New outline set. Click a wall to type its exact length.');
+  }
+  function cancelDraw() { drawing = null; renderAll(); setStatus('Drawing canceled. The room was not changed.'); }
+
+  /* rooms */
+  function newRoom() {
+    sync();
+    var r = { id: newId('r'), name: 'New room', outline: [[0, 0], [30, 0], [30, 25], [0, 25]], features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
+    store.rooms.push(r); setRoom(r.id); setMode('setup');
+    setStatus('New room added. Name it and set its shape, then choose Done.');
+  }
+  function dupRoom() {
+    sync();
+    var r = JSON.parse(JSON.stringify(room));
+    r.id = newId('r'); r.name = (room.name + ' copy').slice(0, 60);
+    store.rooms.push(r); setRoom(r.id); setMode('setup');
+    setStatus('Made a copy of the room, with its layouts.');
+  }
+  function deleteRoom() {
+    if (store.rooms.length < 2) return;
+    if (!pendingRoomDelete) { pendingRoomDelete = true; renderAll(); setStatus('This deletes "' + room.name + '" and its ' + room.layouts.length + ' saved layouts. Choose Confirm delete to go ahead.'); return; }
+    var gone = room.name;
+    store.rooms = store.rooms.filter(function (r) { return r !== room; });
+    room = null; loadRoom(store.rooms[0]); nameInput.value = name; saveStore(); setMode('arrange');
+    setStatus('Deleted "' + gone + '".');
+  }
+
   /* ---------- pointer ---------- */
   function toFt(e) {
     var pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
     var m = svg.getScreenCTM(); if (!m) return { x: 0, y: 0 };
     var p = pt.matrixTransform(m.inverse()); return { x: p.x / S, y: p.y / S };
   }
+  function setupDown(e, p) {
+    var t = e.target.closest ? e.target.closest('[data-k]') : null;
+    pendingRoomDelete = false;
+    if (!t) { ssel = null; renderAll(); return; }
+    var k = t.getAttribute('data-k'), o;
+    if (k === 'handle') { o = selObj(); if (!o) return; drag = { kind: 'resize', start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false }; return; }
+    ssel = { k: k, id: t.getAttribute('data-id') }; o = selObj();
+    if (!o) { ssel = null; renderAll(); return; }
+    drag = { kind: k, start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false };
+    if (k === 'wall') {
+      drag.base = JSON.stringify(room.outline); drag.oldMaxY = RB().maxY;
+      drag.feats = featuresOn(o).map(function (f) { return { f: f, c: o.horiz ? f.y1 : f.x1 }; });
+      vbLock = viewBox();
+    }
+    renderAll();
+  }
+  function setupMove(p) {
+    var o = selObj(), dx = snap(p.x - drag.start.x), dy = snap(p.y - drag.start.y), g = drag.orig;
+    if (!o) return;
+    if (drag.kind === 'wall') {
+      var base = JSON.parse(drag.base), d = g.horiz ? dy : dx, out = moveEdge(base, g.i, d);
+      if (!validOutline(out)) return;
+      room.outline = out; if (d) drag.moved = true;
+      drag.feats.forEach(function (x) { if (g.horiz) x.f.y1 = x.f.y2 = r2(x.c + d); else x.f.x1 = x.f.x2 = r2(x.c + d); });
+    } else if (drag.kind === 'feature') {
+      var e = nearestEdge(p);
+      placeOnEdge(o, e, e.horiz ? p.x : p.y, fLen(g)); drag.moved = true;
+    } else if (drag.kind === 'fixture') {
+      o.x = r2(g.x + dx); o.y = r2(g.y + dy); if (dx || dy) drag.moved = true;
+    } else if (drag.kind === 'zone') {
+      o.x1 = r2(g.x1 + dx); o.x2 = r2(g.x2 + dx); o.y1 = r2(g.y1 + dy); o.y2 = r2(g.y2 + dy); if (dx || dy) drag.moved = true;
+    } else if (drag.kind === 'resize') {
+      if (ssel.k === 'fixture') { o.w = r2(Math.max(0.25, g.w + dx)); o.h = r2(Math.max(0.25, g.h + dy)); }
+      else { o.x2 = r2(Math.max(g.x1 + 0.25, g.x2 + dx)); o.y2 = r2(Math.max(g.y1 + 0.25, g.y2 + dy)); }
+      if (dx || dy) drag.moved = true;
+    }
+    renderPlan();
+  }
+  function setupEnd() {
+    var d = drag, note = '';
+    drag = null; vbLock = null;
+    if (d.moved) {
+      sUndo.push(d.before); if (sUndo.length > 60) sUndo.shift(); sRedo = [];
+      if (d.kind === 'wall') {
+        var before = room.outline.length;
+        room.outline = cleanOutline(room.outline);
+        note = droppedNote(afterOutline(d.oldMaxY));
+        if (room.outline.length !== before) ssel = null;
+      } else if (d.kind === 'feature') refreshDoorZones();
+      else if (d.kind === 'zone' || (d.kind === 'resize' && ssel.k === 'zone')) { var z = selObj(); if (z) z.auto = false; }
+      saveStore();
+      if (note) setStatus(note.trim());
+    }
+    renderAll();
+  }
   svg.addEventListener('pointerdown', function (e) {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
-    var g = e.target.closest ? e.target.closest('.it') : null, p = toFt(e);
+    var p = toFt(e);
+    e.preventDefault();
+    if (drawing) {
+      var d = drawing;
+      if (d.pts.length >= 3 && Math.abs(p.x - d.pts[0][0]) < 0.75 && Math.abs(p.y - d.pts[0][1]) < 0.75) { finishDraw(); return; }
+      var q = drawNext(p), last = d.pts[d.pts.length - 1];
+      if (!last || q[0] !== last[0] || q[1] !== last[1]) d.pts.push(q);
+      d.cur = null; renderAll();
+      setStatus(d.pts.length < 3 ? 'Click the next corner.' : 'Click the next corner, or click the first corner (the ring) to finish.');
+      return;
+    }
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    if (mode === 'setup') { setupDown(e, p); return; }
+    var g = e.target.closest ? e.target.closest('.it') : null;
     if (g) {
       var id = g.getAttribute('data-id');
       if (e.shiftKey || e.metaKey || e.ctrlKey) {
@@ -609,19 +1347,20 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
       var orig = new Map();
       selected.forEach(function (sid) { var it = find(sid); if (it) orig.set(sid, { x: it.x, y: it.y }); });
       drag = { kind: 'move', start: p, orig: orig, before: snapshot(), moved: false };
-      svg.classList.add('dragging');
     } else {
       drag = { kind: 'box', start: p, cur: p, base: (e.shiftKey ? new Set(selected) : new Set()) };
       if (!e.shiftKey) selected.clear();
     }
-    e.preventDefault(); renderAll();
+    renderAll();
   });
   svg.addEventListener('pointermove', function (e) {
-    if (!drag) return;
     var p = toFt(e);
+    if (drawing) { drawing.cur = drawNext(p); renderPlan(); return; }
+    if (!drag) return;
+    if (mode === 'setup') { setupMove(p); return; }
     if (drag.kind === 'move') {
       var dx = p.x - drag.start.x, dy = p.y - drag.start.y;
-      if (opts.snap) { dx = Math.round(dx * 4) / 4; dy = Math.round(dy * 4) / 4; }
+      if (opts.snap) { dx = snap(dx); dy = snap(dy); }
       if (dx || dy) drag.moved = true;
       drag.orig.forEach(function (o, id) { var it = find(id); if (it) { it.x = r2(o.x + dx); it.y = r2(o.y + dy); } });
       renderPlan();
@@ -635,10 +1374,11 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
   });
   function endDrag() {
     if (!drag) return;
+    if (mode === 'setup') { setupEnd(); return; }
     if (drag.kind === 'move' && drag.moved) {
-      undoStack.push(drag.before); if (undoStack.length > 120) undoStack.shift(); redoStack = []; saveDraft();
+      undoStack.push(drag.before); if (undoStack.length > 120) undoStack.shift(); redoStack = []; saveStore();
     }
-    drag = null; svg.classList.remove('dragging'); renderAll();
+    drag = null; renderAll();
   }
   svg.addEventListener('pointerup', endDrag);
   svg.addEventListener('pointercancel', endDrag);
@@ -654,51 +1394,68 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     var el = $('opt-' + k); el.checked = opts[k];
     el.addEventListener('change', function () { opts[k] = el.checked; renderAll(); });
   });
-  $('preset').addEventListener('change', function (e) {
-    var v = e.target.value; if (!PRESETS[v]) return;
-    commit(); items = PRESETS[v](); name = PRESET_NAMES[v]; nameInput.value = name; selected.clear(); changed();
-    setStatus('Loaded "' + PRESET_NAMES[v] + '". Undo to go back.');
-    e.target.value = '';
+  nameInput.addEventListener('input', function () { name = nameInput.value; saveStore(); });
+  $('btn-setup').addEventListener('click', function () { setMode(mode === 'setup' ? 'arrange' : 'setup'); setStatus(''); });
+  $('room-pick').addEventListener('change', function (e) {
+    var v = e.target.value;
+    if (v === '+new') { newRoom(); return; }
+    setRoom(v); setMode(mode); setStatus('Switched to "' + room.name + '".');
   });
-  nameInput.addEventListener('input', function () { name = nameInput.value; saveDraft(); });
+  $('btn-room-new').addEventListener('click', newRoom);
+  $('btn-room-dup').addEventListener('click', dupRoom);
+  $('btn-room-del').addEventListener('click', deleteRoom);
+  $('btn-draw').addEventListener('click', startDraw);
+  $('btn-draw-finish').addEventListener('click', finishDraw);
+  $('btn-draw-back').addEventListener('click', function () { if (drawing && drawing.pts.length) { drawing.pts.pop(); drawing.cur = null; renderAll(); } });
+  $('btn-draw-cancel').addEventListener('click', cancelDraw);
+  $('btn-flip-lr').addEventListener('click', function () { flipRoom(true); });
+  $('btn-flip-fb').addEventListener('click', function () { flipRoom(false); });
+  $('btn-add-fixture').addEventListener('click', addFixture);
+  $('btn-add-zone').addEventListener('click', addZone);
+  $('btn-sundo').addEventListener('click', sUndoDo);
+  $('btn-sredo').addEventListener('click', sRedoDo);
   document.addEventListener('keydown', function (e) {
     var tag = (e.target && e.target.tagName) || '';
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
-    var mod = e.ctrlKey || e.metaKey, k = e.key;
-    if (mod && (k === 'z' || k === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
-    if (mod && (k === 'y' || k === 'Y')) { e.preventDefault(); redo(); return; }
+    var mod = e.ctrlKey || e.metaKey, k = e.key, setup = mode === 'setup';
+    if (drawing) { if (k === 'Escape') cancelDraw(); return; }
+    if (mod && (k === 'z' || k === 'Z')) { e.preventDefault(); if (setup) { if (e.shiftKey) sRedoDo(); else sUndoDo(); } else if (e.shiftKey) redo(); else undo(); return; }
+    if (mod && (k === 'y' || k === 'Y')) { e.preventDefault(); if (setup) sRedoDo(); else redo(); return; }
     if (mod) return;
+    var st = e.shiftKey ? 1 : 0.25, dx = k === 'ArrowLeft' ? -st : k === 'ArrowRight' ? st : 0, dy = k === 'ArrowUp' ? -st : k === 'ArrowDown' ? st : 0;
+    if (setup) {
+      if (k === 'Delete' || k === 'Backspace') { if (ssel && ssel.k !== 'wall') { e.preventDefault(); deleteSetupSel(); } }
+      else if (k === 'Escape') { ssel = null; renderAll(); }
+      else if (k.indexOf('Arrow') === 0 && ssel) { e.preventDefault(); nudgeSetup(dx, dy); }
+      return;
+    }
     if (k === 'r' || k === 'R') { rotateSel(); }
     else if (k === 'd' || k === 'D') { dupSel(); }
     else if (k === 'Delete' || k === 'Backspace') { if (selected.size) { e.preventDefault(); delSel(); } }
     else if (k === 'Escape') { selected.clear(); renderAll(); }
-    else if (k.indexOf('Arrow') === 0 && selected.size) {
-      e.preventDefault(); var st = e.shiftKey ? 1 : 0.25;
-      nudge(k === 'ArrowLeft' ? -st : k === 'ArrowRight' ? st : 0, k === 'ArrowUp' ? -st : k === 'ArrowDown' ? st : 0);
-    }
+    else if (k.indexOf('Arrow') === 0 && selected.size) { e.preventDefault(); nudge(dx, dy); }
   });
 
   /* ---------- saving ---------- */
-  function storageWorks() {
-    try { localStorage.setItem('classroom-planner-test', '1'); localStorage.removeItem('classroom-planner-test'); return true; } catch (e) { return false; }
-  }
   $('btn-save').addEventListener('click', function () {
     var nm = (nameInput.value || '').trim().slice(0, 60) || 'My layout';
     name = nm; nameInput.value = nm;
     if (!storageWorks()) { setStatus('This browser is blocking saved data, so the layout could not be saved.'); return; }
     var entry = { name: nm, items: clean(items), savedAt: Date.now() };
-    var replaced = getSaved().some(function (s) { return s.name === nm; });
-    writeLS(LOCAL_SAVED_KEY, [entry].concat(getSaved().filter(function (s) { return s.name !== nm; })).slice(0, 30));
-    saveDraft();
+    var replaced = room.layouts.some(function (s) { return s.name === nm; });
+    room.layouts = [entry].concat(room.layouts.filter(function (s) { return s.name !== nm; })).slice(0, 30);
+    saveStore();
     setStatus((replaced ? 'Updated "' : 'Saved "') + nm + '" in this browser.');
     renderSaved();
   });
 
   /* ---------- download and upload ----------
-     Download makes a PNG picture of the layout and stores the layout data inside the
-     same file, in a PNG text chunk. Upload reads that chunk back. FILE_V is the data
-     format version: newer versions of the planner must keep reading older files. */
-  var FILE_KEY = 'classroom-layout-planner', FILE_V = 1, PIC_W = 1400, PIC_H = 1480;
+     Download makes a PNG picture of the layout and stores the room and layout data inside the
+     same file, in a PNG text chunk. Upload reads that chunk back. FILE_V is the data format
+     version: newer versions of the planner must keep reading older files.
+       v1: { app, v, name, items, savedAt }           (the original room is implied)
+       v2: adds room: { id, name, outline, features, fixtures, zones } */
+  var FILE_KEY = 'classroom-layout-planner', FILE_V = 2;
   var crcTable = null;
   function crc32(u8) {
     var n, k, c, i, crc = 0xFFFFFFFF;
@@ -751,21 +1508,21 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
     }
     return null;
   }
-  function pictureSVG(title) {
+  function pictureSVG(title, vb) {
     var NS = 'http://www.w3.org/2000/svg', c = svg.cloneNode(true);
     c.setAttribute('xmlns', NS);
     c.setAttribute('data-theme', 'light');
-    c.setAttribute('width', PIC_W); c.setAttribute('height', PIC_H);
-    c.removeAttribute('class');
+    c.setAttribute('width', vb.w * 2); c.setAttribute('height', vb.h * 2);
+    c.setAttribute('class', 'arrange');
     var over = c.querySelector('#g-over'); if (over) over.innerHTML = '';
     Array.prototype.forEach.call(c.querySelectorAll('.selring'), function (n) { n.parentNode.removeChild(n); });
     Array.prototype.forEach.call(c.querySelectorAll('.it.sel'), function (n) { n.classList.remove('sel'); });
     var t = document.createElementNS(NS, 'text');
-    t.setAttribute('x', '-30'); t.setAttribute('y', '-32'); t.setAttribute('font-size', '14'); t.setAttribute('font-weight', '600'); t.setAttribute('fill', '#1B2120');
+    t.setAttribute('x', vb.x + 10); t.setAttribute('y', vb.y + 18); t.setAttribute('font-size', '14'); t.setAttribute('font-weight', '600'); t.setAttribute('fill', '#1B2120');
     t.textContent = title;
     c.insertBefore(t, c.firstChild);
     var bg = document.createElementNS(NS, 'rect');
-    bg.setAttribute('x', '-40'); bg.setAttribute('y', '-50'); bg.setAttribute('width', '700'); bg.setAttribute('height', '740'); bg.setAttribute('fill', '#FFFFFF');
+    bg.setAttribute('x', vb.x); bg.setAttribute('y', vb.y); bg.setAttribute('width', vb.w); bg.setAttribute('height', vb.h); bg.setAttribute('fill', '#FFFFFF');
     c.insertBefore(bg, c.firstChild);
     var st = document.createElementNS(NS, 'style');
     st.textContent = $('app-style').textContent;
@@ -778,15 +1535,16 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
   }
   function downloadLayout() {
     var nm = (nameInput.value || '').trim().slice(0, 60) || 'My layout';
-    var data = { app: FILE_KEY, v: FILE_V, name: nm, items: clean(items), savedAt: Date.now() };
+    var data = { app: FILE_KEY, v: FILE_V, name: nm, items: clean(items), savedAt: Date.now(), room: roomGeom(room) };
     function fail() { setStatus('The picture could not be made in this browser.'); }
     setStatus('Making the picture…');
-    var img = new Image();
+    selected.clear(); renderAll();
+    var vb = viewBox(), img = new Image();
     img.onerror = fail;
     img.onload = function () {
       try {
-        var cv = document.createElement('canvas'); cv.width = PIC_W; cv.height = PIC_H;
-        cv.getContext('2d').drawImage(img, 0, 0, PIC_W, PIC_H);
+        var cv = document.createElement('canvas'); cv.width = vb.w * 2; cv.height = vb.h * 2;
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
         cv.toBlob(function (blob) {
           if (!blob) { fail(); return; }
           var fr = new FileReader();
@@ -794,38 +1552,51 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
           fr.onload = function () {
             var out = addPngText(new Uint8Array(fr.result), FILE_KEY, asciiJSON(data));
             var url = URL.createObjectURL(new Blob([out], { type: 'image/png' }));
-            var a = document.createElement('a'), fn = fileName(nm);
+            var a = document.createElement('a'), fn = fileName(room.name + ' ' + nm);
             a.href = url; a.download = fn; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
-            setStatus('Downloaded ' + fn + '. Keep the file itself: uploading it brings this layout back.');
+            setStatus('Downloaded ' + fn + '. Keep the file itself: uploading it brings this room and layout back.');
           };
           fr.readAsArrayBuffer(blob);
         }, 'image/png');
       } catch (err) { fail(); }
     };
-    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pictureSVG(nm));
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(pictureSVG(room.name + ' · ' + nm, vb));
+  }
+  /* Finds the stored room a file belongs to, or adds the file's room as a new one. */
+  function roomForFile(roomData) {
+    var g = roomData ? sanitizeRoom(roomData, false) : sanitizeRoom(defaultRoom(), false);
+    if (!g) return null;
+    sync();
+    var match = store.rooms.filter(function (r) { return geomKey(r) === geomKey(g); })[0];
+    if (match) return { room: match, added: false };
+    if (store.rooms.some(function (r) { return r.id === g.id; })) { g.id = newId('r'); g.name = (g.name + ' (uploaded)').slice(0, 60); }
+    store.rooms.push(g);
+    return { room: g, added: true };
   }
   function openFromFile(data) {
     if (!data || data.app !== FILE_KEY || !Array.isArray(data.items)) { setStatus('That file is not a layout from this planner.'); return; }
     if (Number(data.v) > FILE_V) { setStatus('That file was made with a newer version of the planner. Refresh this page and try again.'); return; }
+    var target = roomForFile(data.room);
+    if (!target) { setStatus('The room in that file could not be read.'); return; }
     var h = hydrate(data.items);
     var nm = (typeof data.name === 'string' && data.name.trim()) ? data.name.trim().slice(0, 60) : 'Uploaded layout';
-    commit(); items = h; name = nm; nameInput.value = nm; selected.clear(); changed();
-    setStatus('Opened "' + nm + '" from the file. Choose Save layout to keep it in this browser.');
+    if (target.room !== room) setRoom(target.room.id);
+    commit(); items = h; name = nm; nameInput.value = nm; selected.clear();
+    saveStore(); setMode('arrange');
+    setStatus('Opened "' + nm + '" in ' + (target.added ? 'a new room, "' : 'your room "') + room.name + '". Choose Save layout to keep it in this browser.');
   }
-  function addSavedFromFile(list) {
-    var add = [];
-    list.forEach(function (s) {
-      if (!s || typeof s.name !== 'string' || !Array.isArray(s.items)) return;
-      var h = hydrate(s.items); if (!h) return;
-      add.push({ name: s.name.slice(0, 60), items: clean(h), savedAt: Number(s.savedAt) || Date.now() });
-    });
+  function addSavedFromFile(list, roomData) {
+    var add = cleanLayouts(list);
     if (!add.length) { setStatus('That file has no saved layouts in it.'); return; }
     if (!storageWorks()) { setStatus('This browser is blocking saved data, so the layouts could not be added.'); return; }
+    var target = roomForFile(roomData);
+    if (!target) { setStatus('The room in that file could not be read.'); return; }
     var names = new Set(add.map(function (s) { return s.name; }));
-    writeLS(LOCAL_SAVED_KEY, add.concat(getSaved().filter(function (s) { return !names.has(s.name); })).slice(0, 30));
-    setStatus('Added ' + add.length + (add.length === 1 ? ' saved layout' : ' saved layouts') + ' from the file.');
-    renderSaved();
+    target.room.layouts = add.concat(target.room.layouts.filter(function (s) { return !names.has(s.name); })).slice(0, 30);
+    if (target.room !== room) setRoom(target.room.id);
+    saveStore(); setMode('arrange');
+    setStatus('Added ' + add.length + (add.length === 1 ? ' saved layout' : ' saved layouts') + ' to "' + room.name + '".');
   }
   function readUpload(file) {
     var fr = new FileReader();
@@ -840,7 +1611,7 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
         return;
       }
       try { data = JSON.parse(new TextDecoder('utf-8').decode(u8)); } catch (e2) { data = null; }
-      if (data && Array.isArray(data.saved)) addSavedFromFile(data.saved);
+      if (data && Array.isArray(data.saved)) addSavedFromFile(data.saved, data.room);
       else if (data && Array.isArray(data.items)) openFromFile(data);
       else setStatus('That file is not a layout from this planner. Choose a picture made by Download.');
     };
