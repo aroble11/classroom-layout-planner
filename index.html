@@ -147,6 +147,12 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
 .len { display: inline-flex; align-items: center; gap: 5px; }
 .len input { width: 62px; box-sizing: border-box; }
 .tips { margin: 0; padding-left: 18px !important; list-style: disc !important; font-size: 12.5px; color: var(--muted); gap: 4px !important; }
+.types { gap: 4px !important; }
+.types button { width: 100%; justify-content: flex-start; gap: 8px; text-align: left; white-space: normal; }
+.types button.on { border-color: var(--accent); background: var(--accent-soft); }
+.types .nm { flex: 1; min-width: 0; }
+.types .ct { font-family: var(--font-mono); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.form select { width: 100%; box-sizing: border-box; }
 .fix .body { fill: var(--park); stroke: var(--muted); stroke-width: 1.2; }
 .fix text { fill: var(--ink); font-size: 11px; font-weight: 500; pointer-events: none; }
 .feat { stroke-width: 6; }
@@ -272,11 +278,16 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     <aside class="panel" id="panel-setup" hidden>
       <section><h2>Room</h2><div id="roomform" class="form"></div></section>
       <section><h2>Selected</h2><div id="setupsel" class="form"></div></section>
+      <section><h2>Furniture for this room</h2>
+        <ul id="typelist" class="types"></ul>
+        <div style="margin-top:8px"><button id="btn-type-add" type="button">Add furniture type</button></div>
+      </section>
       <section><h2>Tips</h2>
         <ul class="tips">
           <li>Each wall shows its length. Drag that number to move the wall, or click it and type an exact length.</li>
           <li>Drag boards, windows and doors along the walls.</li>
           <li>Fixtures stay put when you arrange furniture.</li>
+          <li>Click a furniture type to change its name, size or count.</li>
           <li>Furniture in a clear zone is flagged.</li>
         </ul>
       </section>
@@ -291,15 +302,82 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   /* Units are feet. S is pixels per foot. The room is a right-angled polygon whose
      smallest x and y are 0. Furniture below the room, in the gray strip, is "spare". */
   var S = 20, E = 0.01, SNAP = 0.25, SPARE_GAP = 0.73, PARK_TOP = 2.08, PARK_H = 5.5;
-  var TYPES = {
-    table: { w: 5, h: 2, label: '', cls: 'tbl', name: 'Table', plural: 'Tables', owned: 15, sw: 'sw-tbl', btn: 'Table' },
-    chair: { w: 1.625, h: 1.625, label: '', cls: 'chr', name: 'Chair', plural: 'Chairs', owned: 30, sw: 'sw-chr', btn: 'Chair' },
-    desk: { w: 3.92, h: 2.5, label: 'Desk', cls: 'oth', name: 'Teacher desk', plural: 'Teacher desk', owned: 1, sw: 'sw-oth', btn: 'Desk' },
-    cow: { w: 2.17, h: 2.5, label: 'COW', cls: 'oth', name: 'COW cart', plural: 'COW cart', owned: 1, sw: 'sw-oth', btn: 'COW' },
-    storage: { w: 4, h: 1.5, label: 'Storage', cls: 'oth', name: 'Storage unit', plural: 'Storage units', owned: 2, sw: 'sw-oth', btn: 'Storage' },
-    shelf: { w: 3, h: 1.25, label: 'Shelf', cls: 'oth', name: 'Bookshelf', plural: 'Bookshelf', owned: 1, sw: 'sw-oth', btn: 'Shelf' }
-  };
-  var ORDER = ['table', 'chair', 'desk', 'cow', 'storage', 'shelf'];
+  /* Furniture types belong to a room. TYPES and ORDER always describe the active room's list.
+     A type is { id, name, shape, w, h, cls, owned, chair }: cls is the color group, owned is how
+     many the room has (null for no limit), chair means adding one also adds a chair. */
+  var TYPES = {}, ORDER = [];
+  var GROUPS = { tbl: { name: 'Student table (teal)', sw: 'sw-tbl' }, chr: { name: 'Chair (gray)', sw: 'sw-chr' }, oth: { name: 'Other (purple)', sw: 'sw-oth' } };
+  var SHAPES = { rect: 'Rectangle', round: 'Round', kidney: 'Kidney' };
+  /* The furniture of the original room. Rooms saved before furniture lists existed get this list. */
+  function legacyTypes() {
+    return [
+      { id: 'table', name: 'Table', shape: 'rect', w: 5, h: 2, cls: 'tbl', owned: 15, chair: false },
+      { id: 'chair', name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', owned: 30, chair: false },
+      { id: 'desk', name: 'Teacher desk', shape: 'rect', w: 3.92, h: 2.5, cls: 'oth', owned: 1, chair: false },
+      { id: 'cow', name: 'COW cart', shape: 'rect', w: 2.17, h: 2.5, cls: 'oth', owned: 1, chair: false },
+      { id: 'storage', name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', owned: 2, chair: false },
+      { id: 'shelf', name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', owned: 1, chair: false }
+    ];
+  }
+  /* The starter list for new rooms. furniture.csv replaces this when it loads; this copy is the fallback. */
+  var STARTER = [
+    { name: 'Student desk (single)', shape: 'rect', w: 2, h: 1.5, cls: 'tbl', chair: true },
+    { name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', chair: false },
+    { name: 'Teacher desk', shape: 'rect', w: 3.917, h: 2.5, cls: 'oth', chair: false },
+    { name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', chair: false },
+    { name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', chair: false }
+  ];
+  function starterTypes() {
+    var seen = {};
+    return STARTER.map(function (s) {
+      var id = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item', k = id, i = 2;
+      while (seen[k]) k = id + '-' + (i++);
+      seen[k] = 1;
+      return { id: k, name: s.name, shape: s.shape, w: s.w, h: s.shape === 'round' ? s.w : s.h, cls: s.cls, owned: null, chair: s.chair };
+    });
+  }
+  function splitCSV(line) {
+    var out = [], cur = '', q = false;
+    for (var i = 0; i < line.length; i++) {
+      var ch = line.charAt(i);
+      if (q) { if (ch === '"') { if (line.charAt(i + 1) === '"') { cur += '"'; i++; } else q = false; } else cur += ch; }
+      else if (ch === '"') q = true;
+      else if (ch === ',') { out.push(cur.trim()); cur = ''; }
+      else cur += ch;
+    }
+    out.push(cur.trim());
+    return out;
+  }
+  /* Reads furniture.csv: name, shape, width in inches, depth in inches, color, comes with a chair. */
+  function parseStarter(text) {
+    var out = [];
+    String(text).split(/\r?\n/).forEach(function (line) {
+      if (!line.trim() || line.trim().charAt(0) === '#') return;
+      var c = splitCSV(line), w = parseFloat(c[2]), d = parseFloat(c[3]);
+      if (!c[0] || !isFinite(w) || w < 3 || w > 480) return;
+      var sh = /round|circle/i.test(c[1]) ? 'round' : /kidney/i.test(c[1]) ? 'kidney' : 'rect';
+      if (sh !== 'round' && (!isFinite(d) || d < 3 || d > 480)) return;
+      var col = /chair/i.test(c[4]) ? 'chr' : /table|desk|student/i.test(c[4]) ? 'tbl' : 'oth';
+      out.push({ name: c[0].slice(0, 40), shape: sh, w: r2(w / 12), h: r2((sh === 'round' ? w : d) / 12), cls: col, chair: /^(y|yes|true|1)$/i.test(c[5] || '') });
+    });
+    return out;
+  }
+  function typeMap(list) { var m = {}; list.forEach(function (t) { m[t.id] = t; }); return m; }
+  function useTypes() { TYPES = typeMap(room.types); ORDER = room.types.map(function (t) { return t.id; }); }
+  function sanitizeTypes(list) {
+    var out = [], seen = {};
+    (Array.isArray(list) ? list : []).forEach(function (t) {
+      if (!t || typeof t.id !== 'string' || !t.id || seen[t.id]) return;
+      var w = Number(t.w), d = Number(t.h), shape = SHAPES[t.shape] ? t.shape : 'rect';
+      if (shape === 'round') d = w;
+      if (!isFinite(w) || !isFinite(d) || w < 0.2 || d < 0.2 || w > 40 || d > 40) return;
+      var owned = (t.owned === null || t.owned === undefined || t.owned === '') ? null : Math.round(Number(t.owned));
+      if (owned !== null && (!isFinite(owned) || owned < 0)) owned = null;
+      seen[t.id] = 1;
+      out.push({ id: t.id.slice(0, 40), name: (typeof t.name === 'string' && t.name.trim()) ? t.name.trim().slice(0, 40) : 'Furniture', shape: shape, w: r2(w), h: r2(d), cls: GROUPS[t.cls] ? t.cls : 'oth', owned: owned, chair: t.chair === true });
+    });
+    return out;
+  }
   var KINDS = {
     whiteboard: { name: 'Whiteboard', len: 8, cls: 'f-board' },
     window: { name: 'Window', len: 6, cls: 'f-window' },
@@ -337,6 +415,20 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function overlap(a, b) { var w = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1), h = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1); return (w > 0 && h > 0) ? w * h : 0; }
+  /* Overlap test for two pieces given as { b: box, round: true|false }. Round pieces are tested as true circles. */
+  function hit(a, b) {
+    var ra = (a.b.x2 - a.b.x1) / 2, rb = (b.b.x2 - b.b.x1) / 2, dx, dy;
+    if (a.round && b.round) {
+      dx = (a.b.x1 + ra) - (b.b.x1 + rb); dy = (a.b.y1 + ra) - (b.b.y1 + rb);
+      return Math.sqrt(dx * dx + dy * dy) < ra + rb - 0.05;
+    }
+    if (a.round || b.round) {
+      var c = a.round ? a.b : b.b, r = a.round ? b.b : a.b, rad = a.round ? ra : rb, cx = c.x1 + rad, cy = c.y1 + rad;
+      dx = Math.max(r.x1 - cx, 0, cx - r.x2); dy = Math.max(r.y1 - cy, 0, cy - r.y2);
+      return Math.sqrt(dx * dx + dy * dy) < rad - 0.05;
+    }
+    return overlap(a.b, b.b) > 0.02;
+  }
   function readLS(k) { try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
   function writeLS(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
   function storageWorks() {
@@ -410,7 +502,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   function emptyDraft() { return { name: '', items: [], t: 0 }; }
   function defaultRoom() {
     return {
-      id: DEFAULT_ID, name: 'My classroom',
+      id: DEFAULT_ID, name: 'My classroom', types: legacyTypes(),
       outline: [[0, 0], [28, 0], [28, 16.71], [24.79, 16.71], [24.79, 22.17], [20.29, 22.17], [20.29, 24.67], [0, 24.67]],
       features: [
         { id: 'f1', kind: 'whiteboard', label: 'Large whiteboard', x1: 1, y1: 0, x2: 27, y2: 0, under: true },
@@ -427,11 +519,12 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       layouts: [], draft: emptyDraft()
     };
   }
-  function hydrate(arr) {
+  function hydrate(arr, map) {
     if (!Array.isArray(arr)) return null;
     var out = [];
+    map = map || TYPES;
     arr.forEach(function (o) {
-      if (!o || !TYPES[o.t]) return;
+      if (!o || !map[o.t]) return;
       var x = Number(o.x), y = Number(o.y), r = Number(o.r) || 0;
       if (!isFinite(x) || !isFinite(y)) return;
       out.push(mk(o.t, r2(x), r2(y), ((r % 4) + 4) % 4));
@@ -439,11 +532,11 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     return out;
   }
   function clean(arr) { return arr.map(function (it) { return { t: it.t, x: r2(it.x), y: r2(it.y), r: it.r }; }); }
-  function cleanLayouts(list) {
+  function cleanLayouts(list, map) {
     var out = [];
     (Array.isArray(list) ? list : []).forEach(function (s) {
       if (!s || typeof s.name !== 'string' || !Array.isArray(s.items)) return;
-      var h = hydrate(s.items); if (!h) return;
+      var h = hydrate(s.items, map); if (!h) return;
       out.push({ name: s.name.slice(0, 60), items: clean(h), savedAt: Number(s.savedAt) || Date.now() });
     });
     return out.slice(0, 30);
@@ -462,7 +555,9 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     function num(v) { v = Number(v); return isFinite(v) ? r2(v) : null; }
     function sid(v, p) { return (typeof v === 'string' && v) ? v.slice(0, 40) : newId(p); }
     function txt(v, d) { return (typeof v === 'string' && v.trim()) ? v.trim().slice(0, 40) : d; }
-    var r = { id: sid(o.id, 'r'), name: (typeof o.name === 'string' && o.name.trim()) ? o.name.trim().slice(0, 60) : 'Room', outline: pts, features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
+    var r = { id: sid(o.id, 'r'), name: (typeof o.name === 'string' && o.name.trim()) ? o.name.trim().slice(0, 60) : 'Room', outline: pts, types: sanitizeTypes(o.types), features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
+    if (!r.types.length) r.types = legacyTypes();
+    var map = typeMap(r.types);
     (Array.isArray(o.features) ? o.features : []).forEach(function (f) {
       if (!f || !KINDS[f.kind]) return;
       var a = [num(f.x1), num(f.y1), num(f.x2), num(f.y2)];
@@ -482,17 +577,17 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       r.zones.push({ id: sid(z.id, 'z'), label: txt(z.label, 'Keep clear'), x1: a[0], y1: a[1], x2: a[2], y2: a[3], door: typeof z.door === 'string' ? z.door : null, auto: z.auto === true });
     });
     if (full) {
-      r.layouts = cleanLayouts(o.layouts);
+      r.layouts = cleanLayouts(o.layouts, map);
       if (o.draft && Array.isArray(o.draft.items)) {
-        var h = hydrate(o.draft.items);
+        var h = hydrate(o.draft.items, map);
         r.draft = { name: typeof o.draft.name === 'string' ? o.draft.name.slice(0, 60) : '', items: h ? clean(h) : [], t: Number(o.draft.t) || 0 };
       }
     }
     return r;
   }
-  function roomGeom(r) { return { id: r.id, name: r.name, outline: r.outline, features: r.features, fixtures: r.fixtures, zones: r.zones }; }
-  /* Two rooms count as the same room when the id, outline and fixtures all match. */
-  function geomKey(r) { return JSON.stringify([r.id, r.outline, r.fixtures.map(function (f) { return [f.x, f.y, f.w, f.h]; })]); }
+  function roomGeom(r) { return { id: r.id, name: r.name, outline: r.outline, types: r.types, features: r.features, fixtures: r.fixtures, zones: r.zones }; }
+  /* Two rooms count as the same room when the id, outline, fixtures and furniture sizes all match. */
+  function geomKey(r) { return JSON.stringify([r.id, r.outline, r.fixtures.map(function (f) { return [f.x, f.y, f.w, f.h]; }), r.types.map(function (t) { return [t.id, t.shape, t.w, t.h]; })]); }
 
   function loadStore() {
     var raw = readLS(STORE_KEY), st = { v: 2, active: null, rooms: [] };
@@ -502,10 +597,10 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     }
     if (!st.rooms.length) {
       /* First visit, or data from the version before rooms existed: move it into the default room. */
-      var d = defaultRoom(), oldDraft = readLS(OLD_DRAFT_KEY);
-      d.layouts = cleanLayouts(readLS(OLD_SAVED_KEY));
+      var d = defaultRoom(), oldDraft = readLS(OLD_DRAFT_KEY), dmap = typeMap(d.types);
+      d.layouts = cleanLayouts(readLS(OLD_SAVED_KEY), dmap);
       if (oldDraft && Array.isArray(oldDraft.items)) {
-        var h = hydrate(oldDraft.items);
+        var h = hydrate(oldDraft.items, dmap);
         if (h) d.draft = { name: typeof oldDraft.name === 'string' ? oldDraft.name : '', items: clean(h), t: Number(oldDraft.t) || 0 };
       }
       st.rooms.push(d);
@@ -521,13 +616,13 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   var selected = new Set(), undoStack = [], redoStack = [];
   var ssel = null, sUndo = [], sRedo = [], drawing = null, vbLock = null;
   var opts = { snap: true, grid: true, zones: true, gaps: true };
-  var drag = null, pendingDelete = null, pendingRoomDelete = false, issueIds = new Set(), issues = [];
+  var drag = null, pendingDelete = null, pendingRoomDelete = false, pendingTypeDelete = false, issueIds = new Set(), issues = [];
 
   function sync() { if (room) room.draft = { name: name, items: clean(items), t: Date.now() }; }
   function saveStore() { sync(); store.active = room.id; writeLS(STORE_KEY, store); }
   function loadRoom(r) {
-    room = r; items = hydrate(r.draft.items) || []; name = r.draft.name || '';
-    selected = new Set(); undoStack = []; redoStack = []; ssel = null; sUndo = []; sRedo = [];
+    room = r; useTypes(); items = hydrate(r.draft.items) || []; name = r.draft.name || '';
+    selected = new Set(); undoStack = []; redoStack = []; ssel = null; sUndo = []; sRedo = []; pendingTypeDelete = false;
     drawing = null; vbLock = null; pendingDelete = null; pendingRoomDelete = false;
   }
   function setRoom(id) {
@@ -539,9 +634,19 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   function RB() { return bounds(room.outline); }
   function spareLine() { return RB().maxY + SPARE_GAP; }
   function isSpare(b) { return b.y1 >= spareLine(); }
-  function inRoom(b) {
-    var o = room.outline;
-    if (!pointIn((b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2, o)) return false;
+  function isRound(it) { return TYPES[it.t].shape === 'round'; }
+  function shapeOf(it) { return { b: box(it), round: isRound(it) }; }
+  function inRoom(b, round) {
+    var o = room.outline, cx = (b.x1 + b.x2) / 2, cy = (b.y1 + b.y2) / 2;
+    if (!pointIn(cx, cy, o)) return false;
+    if (round) {
+      var rad = (b.x2 - b.x1) / 2;
+      return !edges(o).some(function (e) {
+        var along = e.horiz ? cx : cy, across = e.horiz ? cy : cx;
+        var da = along < e.lo ? e.lo - along : along > e.hi ? along - e.hi : 0, dc = Math.abs(across - e.c);
+        return Math.sqrt(da * da + dc * dc) < rad - E;
+      });
+    }
     return !edges(o).some(function (e) {
       return e.horiz ? (e.c > b.y1 + E && e.c < b.y2 - E && e.lo < b.x2 - E && e.hi > b.x1 + E)
         : (e.c > b.x1 + E && e.c < b.x2 - E && e.lo < b.y2 - E && e.hi > b.y1 + E);
@@ -644,14 +749,6 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   writeLS(STORE_KEY, store);
   if (items.length) setStatus('Picked up where you left off in this browser.');
 
-  ORDER.forEach(function (t) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.id = 'add-' + t;
-    b.innerHTML = '<span class="swatch ' + TYPES[t].sw + '" aria-hidden="true"></span>' + esc(TYPES[t].btn);
-    b.setAttribute('aria-label', 'Add ' + TYPES[t].name.toLowerCase());
-    b.addEventListener('click', function () { addItem(t); });
-    $('add-btns').appendChild(b);
-  });
   KIND_ORDER.forEach(function (k) {
     var b = document.createElement('button');
     b.type = 'button'; b.id = 'feat-' + k; b.textContent = KINDS[k].name;
@@ -669,22 +766,34 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   }
   function rectAttrs(b) { return 'x="' + P(b.x1) + '" y="' + P(b.y1) + '" width="' + P(b.x2 - b.x1) + '" height="' + P(b.y2 - b.y1) + '"'; }
   function lineAttrs(x1, y1, x2, y2) { return 'x1="' + P(x1) + '" y1="' + P(y1) + '" x2="' + P(x2) + '" y2="' + P(y2) + '"'; }
+  function kidneyPath(w, h) {
+    function p(x, y) { return r2(w * x) + ' ' + r2(h * y); }
+    return 'M' + p(0, 0.55) + ' C' + p(0, -0.15) + ' ' + p(1, -0.15) + ' ' + p(1, 0.55) + ' C' + p(1, 1.05) + ' ' + p(0.72, 1.1) + ' ' + p(0.66, 0.8) +
+      ' C' + p(0.6, 0.5) + ' ' + p(0.4, 0.5) + ' ' + p(0.34, 0.8) + ' C' + p(0.28, 1.1) + ' ' + p(0, 1.05) + ' ' + p(0, 0.55) + ' Z';
+  }
   function itemSVG(it) {
     var T = TYPES[it.t], b = box(it), w = P(b.x2 - b.x1), h = P(b.y2 - b.y1);
     var sel = selected.has(it.id), bad = issueIds.has(it.id);
     var s = '<g class="it ' + T.cls + (sel ? ' sel' : '') + (bad ? ' bad' : '') + '" data-id="' + it.id + '" transform="translate(' + P(b.x1) + ' ' + P(b.y1) + ')">';
-    s += '<rect class="body" width="' + w + '" height="' + h + '" rx="2"/>';
-    if (it.t === 'chair') {
+    if (T.shape === 'round') s += '<ellipse class="body" cx="' + r2(w / 2) + '" cy="' + r2(h / 2) + '" rx="' + r2(w / 2) + '" ry="' + r2(h / 2) + '"/>';
+    else if (T.shape === 'kidney') {
+      var bw = P(T.w), bh = P(T.h);
+      s += '<path class="body" transform="translate(' + r2(w / 2) + ' ' + r2(h / 2) + ') rotate(' + (it.r * 90) + ') translate(' + r2(-bw / 2) + ' ' + r2(-bh / 2) + ')" d="' + kidneyPath(bw, bh) + '"/>';
+    } else s += '<rect class="body" width="' + w + '" height="' + h + '" rx="2"/>';
+    if (T.cls === 'chr') {
       var i = 3.5, ln;
       if (it.r === 0) ln = [i, h - i, w - i, h - i];
       else if (it.r === 1) ln = [i, i, i, h - i];
       else if (it.r === 2) ln = [i, i, w - i, i];
       else ln = [w - i, i, w - i, h - i];
       s += '<line class="back" x1="' + ln[0] + '" y1="' + ln[1] + '" x2="' + ln[2] + '" y2="' + ln[3] + '"/>';
-    }
-    if (T.label) {
-      var cx = r2(w / 2), cy = r2(h / 2), vert = h > w * 1.2;
-      s += '<text x="' + cx + '" y="' + cy + '" text-anchor="middle" dominant-baseline="central"' + (vert ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>' + T.label + '</text>';
+    } else if (T.cls === 'oth') {
+      /* The name goes on the piece when it fits, shrunk if needed. */
+      var fs = Math.min(11, (Math.max(w, h) - 8) / (T.name.length * 0.58));
+      if (fs >= 6.5 && Math.min(w, h) >= fs + 3) {
+        var cx = r2(w / 2), cy = r2(h / 2), vert = h > w * 1.2;
+        s += '<text x="' + cx + '" y="' + cy + '" style="font-size:' + r2(fs) + 'px" text-anchor="middle" dominant-baseline="central"' + (vert ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(T.name) + '</text>';
+      }
     }
     if (sel) s += '<rect class="selring" x="-3" y="-3" width="' + r2(w + 6) + '" height="' + r2(h + 6) + '" rx="4"/>';
     return s + '</g>';
@@ -737,7 +846,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     }
     if (opts.gaps && selected.size === 1) {
       var it = find(Array.from(selected)[0]);
-      if (it && inRoom(box(it))) {
+      if (it && inRoom(box(it), isRound(it))) {
         gapsFor(it).forEach(function (g) {
           var len = g.v ? g.y2 - g.y1 : g.x2 - g.x1, mx = P((g.x1 + g.x2) / 2), my = P((g.y1 + g.y2) / 2), label = fmt(len), tw = label.length * 6.2 + 8;
           s += '<line class="dimline" ' + lineAttrs(g.x1, g.y1, g.x2, g.y2) + '/>';
@@ -752,7 +861,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   }
   function setupOverlay() {
     var s = '', o = ssel && selObj();
-    if (!o) return s;
+    if (!o || ssel.k === 'type') return s;
     if (ssel.k === 'wall') s += '<line class="wallsel" ' + (o.horiz ? lineAttrs(o.lo, o.c, o.hi, o.c) : lineAttrs(o.c, o.lo, o.c, o.hi)) + '/>';
     else if (ssel.k === 'feature') {
       var pad = 0.3, b = { x1: o.x1 - pad, y1: o.y1 - pad, x2: o.x2 + pad, y2: o.y2 + pad };
@@ -837,15 +946,15 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     issues = []; issueIds = new Set();
     var live = [], zones = allZones(), fixes = room.fixtures;
     items.forEach(function (it) {
-      var b = box(it), nm = TYPES[it.t].name;
-      if (isSpare(b)) return;
-      if (!inRoom(b)) issues.push({ ids: [it.id], text: nm + ' is partly outside the room' });
-      zones.forEach(function (z) { if (overlap(b, z) > 0.02) issues.push({ ids: [it.id], text: nm + ' is in a clear zone (' + z.label + ')' }); });
-      fixes.forEach(function (f) { if (overlap(b, fixBox(f)) > 0.02) issues.push({ ids: [it.id], text: nm + ' overlaps ' + f.name }); });
-      live.push({ it: it, b: b });
+      var sh = shapeOf(it), nm = TYPES[it.t].name;
+      if (isSpare(sh.b)) return;
+      if (!inRoom(sh.b, sh.round)) issues.push({ ids: [it.id], text: nm + ' is partly outside the room' });
+      zones.forEach(function (z) { if (hit(sh, { b: z })) issues.push({ ids: [it.id], text: nm + ' is in a clear zone (' + z.label + ')' }); });
+      fixes.forEach(function (f) { if (hit(sh, { b: fixBox(f) })) issues.push({ ids: [it.id], text: nm + ' overlaps ' + f.name }); });
+      live.push({ it: it, sh: sh });
     });
     for (var i = 0; i < live.length; i++) for (var j = i + 1; j < live.length; j++) {
-      if (overlap(live[i].b, live[j].b) > 0.02) issues.push({ ids: [live[i].it.id, live[j].it.id], text: TYPES[live[i].it.t].name + ' overlaps ' + TYPES[live[j].it.t].name.toLowerCase() });
+      if (hit(live[i].sh, live[j].sh)) issues.push({ ids: [live[i].it.id, live[j].it.id], text: TYPES[live[i].it.t].name + ' overlaps ' + TYPES[live[j].it.t].name.toLowerCase() });
     }
     issues.forEach(function (x) { x.ids.forEach(function (id) { issueIds.add(id); }); });
   }
@@ -864,10 +973,10 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     items.forEach(function (it) { if (isSpare(box(it))) spare[it.t]++; else counts[it.t]++; });
     var inv = '';
     ORDER.forEach(function (t) {
-      var T = TYPES[t], total = counts[t] + spare[t], over = total > T.owned;
-      inv += '<li><span class="swatch ' + T.sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.plural) +
+      var T = TYPES[t], total = counts[t] + spare[t], lim = T.owned, over = lim !== null && total > lim;
+      inv += '<li><span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) +
         (spare[t] ? ' <span class="spare">(' + spare[t] + ' spare)</span>' : '') + '</span>' +
-        '<span class="ct' + (over ? ' warn' : '') + '">' + counts[t] + ' of ' + T.owned + (over ? ' · ' + (total - T.owned) + ' extra' : '') + '</span></li>';
+        '<span class="ct' + (over ? ' warn' : '') + '">' + counts[t] + (lim !== null ? ' of ' + lim : '') + (over ? ' · ' + (total - lim) + ' extra' : '') + '</span></li>';
     });
     $('inventory').innerHTML = inv;
 
@@ -887,13 +996,13 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     if (!selected.size) si.innerHTML = '<span class="muted">Click a piece to select it. Drag across empty floor to select several.</span>';
     else if (selected.size === 1) {
       var it = find(Array.from(selected)[0]); var b = box(it), T = TYPES[it.t];
-      var facing = it.t === 'chair' ? '<span>Student faces the ' + ['top', 'right', 'bottom', 'left'][it.r] + ' of the plan</span>' : '';
-      si.innerHTML = '<strong>' + esc(T.name) + '</strong><span class="mono">' + fmtFine(b.x2 - b.x1) + ' × ' + fmtFine(b.y2 - b.y1) + '</span>' +
+      var facing = T.cls === 'chr' ? '<span>Student faces the ' + ['top', 'right', 'bottom', 'left'][it.r] + ' of the plan</span>' : '';
+      si.innerHTML = '<strong>' + esc(T.name) + '</strong><span class="mono">' + (T.shape === 'round' ? fmtFine(T.w) + ' across' : fmtFine(b.x2 - b.x1) + ' × ' + fmtFine(b.y2 - b.y1)) + '</span>' +
         (isSpare(b) ? '<span class="muted">In the spare area</span>' : '<span class="mono">' + fmt(b.x1) + ' from the left edge · ' + fmt(b.y1) + ' from the top edge</span>') + facing +
         (opts.gaps && !isSpare(b) ? '<span class="muted">Orange lines show the open space to the nearest piece or wall.</span>' : '');
     } else {
       var c = {}; selected.forEach(function (id) { var x = find(id); if (x) c[x.t] = (c[x.t] || 0) + 1; });
-      si.innerHTML = '<strong>' + selected.size + ' pieces selected</strong><span class="muted">' + ORDER.filter(function (t) { return c[t]; }).map(function (t) { return c[t] + ' ' + (c[t] > 1 ? TYPES[t].plural.toLowerCase() : TYPES[t].name.toLowerCase()); }).join(', ') + '</span>';
+      si.innerHTML = '<strong>' + selected.size + ' pieces selected</strong><span class="muted">' + ORDER.filter(function (t) { return c[t]; }).map(function (t) { return c[t] + ' × ' + esc(TYPES[t].name); }).join(', ') + '</span>';
     }
 
     $('btn-rotate').disabled = $('btn-dup').disabled = $('btn-del').disabled = !selected.size;
@@ -906,7 +1015,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     if (!list.length) { ul.innerHTML = '<li class="empty">Nothing saved for this room yet. Name your layout above and choose Save layout.</li>'; return; }
     list.forEach(function (s) {
       var li = document.createElement('li');
-      var seats = s.items.filter(function (o) { return o.t === 'chair' && !(o.y >= line); }).length;
+      var seats = s.items.filter(function (o) { return TYPES[o.t] && TYPES[o.t].cls === 'chr' && !(o.y >= line); }).length;
       var when = s.savedAt ? new Date(s.savedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
       li.innerHTML = '<div><span class="nm"></span></div><div class="meta">' + seats + ' seats' + (when ? ' · saved ' + esc(when) : '') + '</div>';
       li.querySelector('.nm').textContent = s.name;
@@ -943,6 +1052,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   function selObj() {
     if (!ssel) return null;
     if (ssel.k === 'wall') return edges(room.outline)[Number(ssel.id)] || null;
+    if (ssel.k === 'type') return TYPES[ssel.id] || null;
     var list = ssel.k === 'feature' ? room.features : ssel.k === 'fixture' ? room.fixtures : room.zones;
     return list.filter(function (x) { return x.id === ssel.id; })[0] || null;
   }
@@ -952,6 +1062,14 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       '<div class="row"><span>Start over as a plain rectangle</span><div>Width ' + lenHTML('rect-w', B.maxX) + '</div><div>Length ' + lenHTML('rect-h', B.maxY) + '</div></div>' +
       '<div><button type="button" id="btn-rect">Make rectangle</button></div>';
     $('room-name').value = room.name;
+    var tl = $('typelist'); tl.innerHTML = '';
+    room.types.forEach(function (T) {
+      var li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; if (ssel && ssel.k === 'type' && ssel.id === T.id) b.className = 'on';
+      b.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) + '</span><span class="ct">' + (T.shape === 'round' ? fmtFine(T.w) + ' round' : fmtFine(T.w) + ' × ' + fmtFine(T.h)) + '</span>';
+      b.addEventListener('click', function () { ssel = { k: 'type', id: T.id }; pendingTypeDelete = false; renderAll(); $('setupsel').scrollIntoView({ block: 'nearest' }); });
+      li.appendChild(b); tl.appendChild(li);
+    });
     onChange('room-name', function () { var v = $('room-name').value.trim().slice(0, 60); if (!v) return; sCommit(); room.name = v; changed(); });
     onClick('btn-rect', function () {
       var w = readLen('rect-w'), l = readLen('rect-h');
@@ -980,6 +1098,40 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       onChange('f-len-ft', setLen); onChange('f-len-in', setLen);
       onChange('f-under', function () { sCommit(); o.under = $('f-under').checked; changed(); });
       onClick('btn-sdel', deleteSetupSel);
+    } else if (ssel.k === 'type') {
+      var used = 0; eachStoredItem(function (it) { if (it.t === o.id) used++; });
+      h = '<strong>Furniture type</strong><label class="row"><span>Name</span><input type="text" id="t-name" maxlength="40" autocomplete="off"></label>' +
+        '<label class="row"><span>Shape</span><select id="t-shape">' + Object.keys(SHAPES).map(function (k) { return '<option value="' + k + '"' + (k === o.shape ? ' selected' : '') + '>' + SHAPES[k] + '</option>'; }).join('') + '</select></label>' +
+        (o.shape === 'round' ? '<div class="row"><span>Distance across</span>' + lenHTML('t-w', o.w) + '</div>'
+          : '<div class="row"><span>Width</span>' + lenHTML('t-w', o.w) + '</div><div class="row"><span>Depth</span>' + lenHTML('t-h', o.h) + '</div>') +
+        '<label class="row"><span>Color</span><select id="t-cls">' + Object.keys(GROUPS).map(function (k) { return '<option value="' + k + '"' + (k === o.cls ? ' selected' : '') + '>' + GROUPS[k].name + '</option>'; }).join('') + '</select></label>' +
+        '<label class="row"><span>How many this room has (leave empty for no limit)</span><input type="number" id="t-owned" min="0" step="1" value="' + (o.owned === null ? '' : o.owned) + '"></label>' +
+        (o.cls !== 'chr' ? '<label class="check"><input type="checkbox" id="t-chair"' + (o.chair ? ' checked' : '') + '> Adding one also adds a chair</label>' : '') +
+        (o.shape === 'kidney' ? '<span class="muted">Checks treat a kidney table as the rectangle around it.</span>' : '') +
+        '<div><button type="button" id="btn-tdel" class="danger' + (pendingTypeDelete ? ' confirm' : '') + '">' + (pendingTypeDelete ? 'Confirm delete' : 'Delete') + '</button></div>';
+      sp.innerHTML = h;
+      $('t-name').value = o.name;
+      onChange('t-name', function () { var v = $('t-name').value.trim().slice(0, 40); if (!v) return; sCommit(); o.name = v; changed(); });
+      onChange('t-shape', function () { sCommit(); o.shape = $('t-shape').value; if (o.shape === 'round') o.h = o.w; changed(); });
+      function setTypeSize() {
+        var w = readLen('t-w'), d = o.shape === 'round' ? w : readLen('t-h');
+        if (w < 0.25 || d < 0.25 || w > 40 || d > 40) { setStatus('Enter a size between 3″ and 40′.'); return; }
+        sCommit(); o.w = w; o.h = d; changed();
+      }
+      ['t-w-ft', 't-w-in', 't-h-ft', 't-h-in'].forEach(function (id) { onChange(id, setTypeSize); });
+      onChange('t-cls', function () { sCommit(); o.cls = $('t-cls').value; if (o.cls === 'chr') o.chair = false; changed(); });
+      onChange('t-owned', function () { var v = $('t-owned').value.trim(), nn = Math.round(Number(v)); sCommit(); o.owned = (v === '' || !isFinite(nn) || nn < 0) ? null : nn; changed(); });
+      onChange('t-chair', function () { sCommit(); o.chair = $('t-chair').checked; changed(); });
+      onClick('btn-tdel', function () {
+        if (room.types.length < 2) { setStatus('A room needs at least one furniture type.'); return; }
+        if (used && !pendingTypeDelete) { pendingTypeDelete = true; renderAll(); setStatus(used + (used === 1 ? ' piece' : ' pieces') + ' of this type in this room\'s layouts will be removed too. Choose Confirm delete to go ahead.'); return; }
+        sCommit(); pendingTypeDelete = false;
+        var id = o.id;
+        room.types = room.types.filter(function (t) { return t.id !== id; });
+        items = items.filter(function (it) { return it.t !== id; });
+        room.layouts.forEach(function (l) { l.items = l.items.filter(function (it) { return it.t !== id; }); });
+        useTypes(); ssel = null; changed(); setStatus('Deleted "' + o.name + '".');
+      });
     } else if (ssel.k === 'fixture') {
       sp.innerHTML = '<strong>Fixture</strong><label class="row"><span>Name</span><input type="text" id="x-name" maxlength="40" autocomplete="off" list="x-names"></label>' +
         '<datalist id="x-names"><option value="Countertop"><option value="Sink"><option value="Projector screen"><option value="Cabinet"><option value="Pillar"></datalist>' +
@@ -1009,7 +1161,17 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     $('btn-draw-back').disabled = !drawing || !drawing.pts.length;
   }
   function renderChrome() {
-    var B = RB(), setup = mode === 'setup', pick = $('room-pick');
+    var B = RB(), setup = mode === 'setup', pick = $('room-pick'), ab = $('add-btns');
+    ab.innerHTML = '';
+    ORDER.forEach(function (t) {
+      var T = TYPES[t], b = document.createElement('button');
+      b.type = 'button'; b.id = 'add-' + t;
+      b.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span>' + esc(T.name);
+      b.setAttribute('aria-label', 'Add ' + T.name);
+      if (T.chair) b.title = 'Adds this with a chair';
+      b.addEventListener('click', function () { addItem(t); });
+      ab.appendChild(b);
+    });
     pick.innerHTML = store.rooms.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === room.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '<option value="+new">+ New room…</option>';
     pick.disabled = !!drawing;
     $('sub').innerHTML = esc(room.name) + ' · <span class="mono">' + fmtFine(B.maxX) + ' × ' + fmtFine(B.maxY) + '</span>, drawn to scale. ' + (setup ? 'You are setting up the room.' : 'Drag furniture to move it.');
@@ -1047,9 +1209,16 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   }
   function addItem(t) {
     commit();
-    var n = items.filter(function (x) { return x.t === t; }).length % 6, d = TYPES[t], c = roomCenter();
-    var it = mk(t, r2(snap(c.x - d.w / 2) + n * 0.5), r2(snap(c.y - d.h / 2) + n * 0.5), 0);
-    items.push(it); selected = new Set([it.id]); changed();
+    var T = TYPES[t], n = items.filter(function (x) { return x.t === t; }).length % 6, c = roomCenter();
+    var it = mk(t, r2(snap(c.x - T.w / 2) + n * 0.5), r2(snap(c.y - T.h / 2) + n * 0.5), 0), sel = [it.id];
+    items.push(it);
+    var ch = T.chair ? ORDER.filter(function (id) { return TYPES[id].cls === 'chr'; })[0] : null;
+    if (ch) {
+      var C = TYPES[ch], chair = mk(ch, r2(it.x + (T.w - C.w) / 2), r2(it.y + T.h + 0.25), 0);
+      items.push(chair); sel.push(chair.id);
+    }
+    selected = new Set(sel); changed();
+    if (ch) setStatus('Added a ' + T.name.toLowerCase() + ' with a chair. They are separate pieces: click one to move it on its own.');
   }
   function rotateSel() {
     if (!selected.size) return; commit();
@@ -1085,7 +1254,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   function sCommit() { sUndo.push(roomSnap()); if (sUndo.length > 60) sUndo.shift(); sRedo = []; }
   function sRestore(json) {
     var r = JSON.parse(json), i = store.rooms.indexOf(room);
-    store.rooms[i] = r; room = r; items = hydrate(r.draft.items) || []; name = r.draft.name || '';
+    store.rooms[i] = r; room = r; useTypes(); items = hydrate(r.draft.items) || []; name = r.draft.name || '';
     ssel = null; selected = new Set(); undoStack = []; redoStack = [];
   }
   function sUndoDo() { if (!sUndo.length) return; sRedo.push(roomSnap()); sRestore(sUndo.pop()); changed(); }
@@ -1158,6 +1327,12 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     ssel = { k: 'feature', id: f.id }; changed();
     setStatus('Added a ' + KINDS[kind].name.toLowerCase() + '. Drag it along the walls to where it belongs.');
   }
+  function addType() {
+    sCommit();
+    var t = { id: newId('t'), name: 'New furniture', shape: 'rect', w: 3, h: 2, cls: 'oth', owned: null, chair: false };
+    room.types.push(t); useTypes(); ssel = { k: 'type', id: t.id }; changed();
+    setStatus('Added a furniture type. Give it a name and a size.');
+  }
   function addFixture() {
     sCommit();
     var c = roomCenter(), f = { id: newId('x'), name: 'Fixture', x: r2(snap(c.x - 2)), y: r2(snap(c.y - 1)), w: 4, h: 2 };
@@ -1172,7 +1347,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     setStatus('Added a clear zone. Drag it into place, and drag its corner to resize it.');
   }
   function deleteSetupSel() {
-    if (!ssel || ssel.k === 'wall') return;
+    if (!ssel || ssel.k === 'wall' || ssel.k === 'type') return;
     sCommit();
     var id = ssel.id;
     if (ssel.k === 'feature') { room.features = room.features.filter(function (f) { return f.id !== id; }); refreshDoorZones(); }
@@ -1181,7 +1356,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     ssel = null; changed();
   }
   function nudgeSetup(dx, dy) {
-    var o = selObj(); if (!o) return;
+    var o = selObj(); if (!o || ssel.k === 'type') return;
     if (ssel.k === 'wall') {
       var d = o.horiz ? dy : dx; if (!d) return;
       var out = cleanOutline(moveEdge(room.outline, o.i, d));
@@ -1241,7 +1416,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   /* rooms */
   function newRoom() {
     sync();
-    var r = { id: newId('r'), name: 'New room', outline: [[0, 0], [30, 0], [30, 25], [0, 25]], features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
+    var r = { id: newId('r'), name: 'New room', outline: [[0, 0], [30, 0], [30, 25], [0, 25]], types: starterTypes(), features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
     store.rooms.push(r); setRoom(r.id); setMode('setup');
     setStatus('New room added. Name it and set its shape, then choose Done.');
   }
@@ -1269,7 +1444,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   }
   function setupDown(e, p) {
     var t = e.target.closest ? e.target.closest('[data-k]') : null;
-    pendingRoomDelete = false;
+    pendingRoomDelete = false; pendingTypeDelete = false;
     if (!t) { ssel = null; renderAll(); return; }
     var k = t.getAttribute('data-k'), o;
     if (k === 'handle') { o = selObj(); if (!o) return; drag = { kind: 'resize', start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false }; return; }
@@ -1412,6 +1587,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   $('btn-flip-fb').addEventListener('click', function () { flipRoom(false); });
   $('btn-add-fixture').addEventListener('click', addFixture);
   $('btn-add-zone').addEventListener('click', addZone);
+  $('btn-type-add').addEventListener('click', addType);
   $('btn-sundo').addEventListener('click', sUndoDo);
   $('btn-sredo').addEventListener('click', sRedoDo);
   document.addEventListener('keydown', function (e) {
@@ -1454,8 +1630,9 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
      same file, in a PNG text chunk. Upload reads that chunk back. FILE_V is the data format
      version: newer versions of the planner must keep reading older files.
        v1: { app, v, name, items, savedAt }           (the original room is implied)
-       v2: adds room: { id, name, outline, features, fixtures, zones } */
-  var FILE_KEY = 'classroom-layout-planner', FILE_V = 2;
+       v2: adds room: { id, name, outline, features, fixtures, zones }
+       v3: room also has types, its furniture list (older rooms get the original room's furniture) */
+  var FILE_KEY = 'classroom-layout-planner', FILE_V = 3;
   var crcTable = null;
   function crc32(u8) {
     var n, k, c, i, crc = 0xFFFFFFFF;
@@ -1579,19 +1756,19 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     if (Number(data.v) > FILE_V) { setStatus('That file was made with a newer version of the planner. Refresh this page and try again.'); return; }
     var target = roomForFile(data.room);
     if (!target) { setStatus('The room in that file could not be read.'); return; }
-    var h = hydrate(data.items);
     var nm = (typeof data.name === 'string' && data.name.trim()) ? data.name.trim().slice(0, 60) : 'Uploaded layout';
     if (target.room !== room) setRoom(target.room.id);
+    var h = hydrate(data.items);
     commit(); items = h; name = nm; nameInput.value = nm; selected.clear();
     saveStore(); setMode('arrange');
     setStatus('Opened "' + nm + '" in ' + (target.added ? 'a new room, "' : 'your room "') + room.name + '". Choose Save layout to keep it in this browser.');
   }
   function addSavedFromFile(list, roomData) {
-    var add = cleanLayouts(list);
-    if (!add.length) { setStatus('That file has no saved layouts in it.'); return; }
     if (!storageWorks()) { setStatus('This browser is blocking saved data, so the layouts could not be added.'); return; }
     var target = roomForFile(roomData);
     if (!target) { setStatus('The room in that file could not be read.'); return; }
+    var add = cleanLayouts(list, typeMap(target.room.types));
+    if (!add.length) { setStatus('That file has no saved layouts in it.'); return; }
     var names = new Set(add.map(function (s) { return s.name; }));
     target.room.layouts = add.concat(target.room.layouts.filter(function (s) { return !names.has(s.name); })).slice(0, 30);
     if (target.room !== room) setRoom(target.room.id);
@@ -1624,6 +1801,12 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     e.target.value = '';
     if (f) readUpload(f);
   });
+
+  /* The starter furniture chart. If it can't be loaded, the built-in copy above is used. */
+  if (window.fetch && /^https?:$/.test(location.protocol)) {
+    fetch('furniture.csv', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.text() : ''; })
+      .then(function (t) { var s = parseStarter(t); if (s.length) STARTER = s; }).catch(function () { /* keep the built-in list */ });
+  }
 
   renderAll();
 })();
