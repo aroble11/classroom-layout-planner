@@ -170,16 +170,18 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .menu-pop label { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
 .menu-pop input { accent-color: var(--accent); margin: 0; }
 .toolbar { border-radius: 0; border-width: 0 0 1px; }
-.work { grid-template-columns: 220px minmax(0, 1fr); gap: 0; align-items: stretch; flex: 1; }
-.work.has-panel { grid-template-columns: 220px minmax(0, 1fr) 300px; }
+.work { grid-template-columns: 244px minmax(0, 1fr); gap: 0; align-items: stretch; flex: 1; }
+.work.has-panel { grid-template-columns: 244px minmax(0, 1fr) 300px; }
 .work.is-setup { grid-template-columns: minmax(0, 1fr) 320px; }
 .rail { background: var(--surface); border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .rail .lbl { padding-left: 8px; }
 .flist { display: flex; flex-direction: column; gap: 2px; }
-.flist button { border: none; background: none; width: 100%; justify-content: flex-start; gap: 8px; padding: 8px; white-space: normal; text-align: left; font-size: 13.5px; }
-.flist button:hover { background: var(--bg); }
+.frow { display: flex; align-items: center; gap: 5px; border-radius: 6px; padding-right: 4px; }
+.frow:hover { background: var(--bg); }
+.flist .fname { border: none; background: none; flex: 1; min-width: 0; justify-content: flex-start; gap: 8px; padding: 8px; white-space: normal; text-align: left; font-size: 13.5px; }
+.flist .step { flex: none; width: 24px; height: 24px; padding: 0; justify-content: center; font-size: 16px; line-height: 1; background: var(--surface); }
 .flist .nm { flex: 1; min-width: 0; }
-.flist .ct { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.flist .ct { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; min-width: 18px; text-align: center; }
 .flist .ct.warn { color: var(--danger); }
 .flist .plus { color: var(--muted); font-size: 17px; line-height: 1; }
 .railsep { border-top: 1px solid var(--line); margin: 8px; }
@@ -205,7 +207,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   .work, .work.has-panel, .work.is-setup { grid-template-columns: minmax(0, 1fr); }
   .rail { border-right: none; border-bottom: 1px solid var(--line); }
   .flist { flex-direction: row; flex-wrap: wrap; gap: 6px; }
-  .flist button { width: auto; border: 1px solid var(--line); padding: 6px 9px; }
+  .frow { border: 1px solid var(--line); padding: 0 5px 0 0; }
+  .flist .fname { flex: none; padding: 6px 4px 6px 9px; }
   .panel { border-width: 1px 0 0; }
   #plan { max-height: none; }
   .canvas { padding: 10px; }
@@ -1339,17 +1342,27 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var B = RB(), setup = mode === 'setup', pick = $('room-pick'), ab = $('add-btns'), counts = {}, spare = {};
     ORDER.forEach(function (t) { counts[t] = 0; spare[t] = 0; });
     items.forEach(function (it) { if (isSpare(box(it))) spare[it.t]++; else counts[it.t]++; });
-    /* The rail: one row per furniture type, with how many are in the room. Clicking a row adds one. */
+    /* The rail: one row per furniture type. The name and the + add one, the − removes one, and the
+       number between them is how many are in the room. */
     ab.innerHTML = '';
     ORDER.forEach(function (t) {
-      var T = TYPES[t], b = document.createElement('button'), total = counts[t] + spare[t], over = T.owned !== null && total > T.owned;
-      b.type = 'button'; b.id = 'add-' + t;
-      b.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) + '</span>' +
-        '<span class="ct' + (over ? ' warn' : '') + '">' + counts[t] + (T.owned !== null ? ' of ' + T.owned : '') + '</span><span class="plus" aria-hidden="true">+</span>';
-      b.setAttribute('aria-label', 'Add ' + T.name);
-      b.title = (T.chair ? 'Adds this with a chair. ' : '') + counts[t] + ' in the room' + (spare[t] ? ', ' + spare[t] + ' spare' : '') + (over ? ', ' + (total - T.owned) + ' more than this room has' : '');
-      b.addEventListener('click', function () { addItem(t); });
-      ab.appendChild(b);
+      var T = TYPES[t], total = counts[t] + spare[t], over = T.owned !== null && total > T.owned;
+      var row = document.createElement('div'), add = document.createElement('button'), minus = document.createElement('button'), ct = document.createElement('span'), plus = document.createElement('button');
+      var tip = (T.chair ? 'Adds this with a chair. ' : '') + counts[t] + ' in the room' + (spare[t] ? ', ' + spare[t] + ' spare' : '') + (over ? ', ' + (total - T.owned) + ' more than this room has' : '');
+      row.className = 'frow';
+      add.type = 'button'; add.id = 'add-' + t; add.className = 'fname'; add.title = tip;
+      add.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) + '</span>';
+      add.setAttribute('aria-label', 'Add ' + T.name);
+      minus.type = 'button'; minus.id = 'rem-' + t; minus.className = 'step'; minus.textContent = '−'; minus.title = 'Remove one';
+      minus.setAttribute('aria-label', 'Remove one ' + T.name); minus.disabled = !total;
+      ct.className = 'ct' + (over ? ' warn' : ''); ct.textContent = counts[t] + (T.owned !== null ? ' of ' + T.owned : ''); ct.title = tip;
+      plus.type = 'button'; plus.className = 'step'; plus.textContent = '+'; plus.title = 'Add one';
+      plus.setAttribute('aria-label', 'Add one ' + T.name);
+      add.addEventListener('click', function () { addItem(t); });
+      plus.addEventListener('click', function () { addItem(t); });
+      minus.addEventListener('click', function () { removeItem(t); });
+      row.appendChild(add); row.appendChild(minus); row.appendChild(ct); row.appendChild(plus);
+      ab.appendChild(row);
     });
     pick.innerHTML = store.rooms.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === room.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') +
       '<option value="+setup">Set up this room…</option><option value="+new">+ New room…</option>';
@@ -1425,6 +1438,16 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     }
     selected = new Set(sel); changed();
     if (ch) setStatus('Added a ' + T.name.toLowerCase() + ' with a chair. They are separate pieces: click one to move it on its own.');
+  }
+  /* Removes one piece of a type: a selected one if there is one, otherwise the one added most recently. */
+  function removeItem(t) {
+    var pick = null, i;
+    for (i = items.length - 1; i >= 0 && !pick; i--) if (items[i].t === t && selected.has(items[i].id)) pick = items[i];
+    for (i = items.length - 1; i >= 0 && !pick; i--) if (items[i].t === t) pick = items[i];
+    if (!pick) return;
+    commit();
+    items = items.filter(function (x) { return x !== pick; }); selected.delete(pick.id); changed();
+    setStatus('Removed one ' + TYPES[t].name.toLowerCase() + '. Undo brings it back.');
   }
   function rotateSel() {
     if (!selected.size) return; commit();
