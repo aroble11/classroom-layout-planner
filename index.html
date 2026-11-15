@@ -187,7 +187,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .railsep { border-top: 1px solid var(--line); margin: 8px; }
 .rail .btns { padding-left: 8px; }
 .canvas { position: relative; border: none; border-radius: 0; background: var(--bg); padding: 16px; }
-#plan { max-height: calc(100vh - 165px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-sizing: border-box; }
+#plan { margin: 0 auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-sizing: border-box; }
 .selbar { position: absolute; z-index: 10; display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
 .selbar button { border: none; padding: 5px 9px; font-size: 12.5px; }
 .selbar button:hover { background: var(--bg); }
@@ -210,7 +210,6 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   .frow { border: 1px solid var(--line); padding: 0 5px 0 0; }
   .flist .fname { flex: none; padding: 6px 4px 6px 9px; }
   .panel { border-width: 1px 0 0; }
-  #plan { max-height: none; }
   .canvas { padding: 10px; }
 }
 .helplink { color: var(--accent); font-weight: 600; }
@@ -225,7 +224,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   #print-head { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #000; }
   .work { display: block; }
   .canvas { border: none; padding: 0; background: #fff; }
-  #plan { width: 100%; height: 7in; max-height: none; border: none; }
+  #plan { width: 100% !important; height: 7in !important; border: none; }
 }
 .types { gap: 4px !important; }
 .types button { width: 100%; justify-content: flex-start; gap: 8px; text-align: left; white-space: normal; }
@@ -393,7 +392,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   'use strict';
   /* Units are feet. S is pixels per foot. The room is a right-angled polygon whose
      smallest x and y are 0. Furniture below the room, in the gray strip, is "spare". */
-  var S = 20, E = 0.01, SNAP = 0.25, SPARE_GAP = 0.73, PARK_TOP = 2.08, PARK_H = 5.5;
+  var S = 20, E = 0.01, SNAP = 0.25, SPARE_GAP = 0.73, PARK_TOP = 2.08, PARK_H = 5.5, PARK_H_EMPTY = 1.5;
   /* Furniture types belong to a room. TYPES and ORDER always describe the active room's list.
      A type is { id, name, shape, w, h, cls, owned, chair }: cls is the color group, owned is how
      many the room has (null for no limit), chair means adding one also adds a chair. */
@@ -853,10 +852,12 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   /* ---------- drawing the plan ---------- */
   function P(v) { return r2(v * S); }
   function pts(arr) { return arr.map(function (p) { return P(p[0]) + ',' + P(p[1]); }).join(' '); }
+  /* The spare strip is drawn short while nothing is in it, so the room gets more of the screen. */
+  function parkH() { return items.some(function (it) { return isSpare(box(it)); }) ? PARK_H : PARK_H_EMPTY; }
   function viewBox() {
     if (drawing) return { x: -40, y: -40, w: drawing.gw * S + 70, h: drawing.gh * S + 70 };
     var B = RB();
-    return { x: P(B.minX) - 40, y: P(B.minY) - 50, w: Math.max(B.maxX - B.minX, 20) * S + 140, h: (B.maxY - B.minY + 9.3) * S + 50 };
+    return { x: P(B.minX) - 40, y: P(B.minY) - 50, w: Math.max(B.maxX - B.minX, 20) * S + 140, h: (B.maxY - B.minY + PARK_TOP + parkH() + 1.72) * S + 50 };
   }
   function rectAttrs(b) { return 'x="' + P(b.x1) + '" y="' + P(b.y1) + '" width="' + P(b.x2 - b.x1) + '" height="' + P(b.y2 - b.y1) + '"'; }
   function lineAttrs(x1, y1, x2, y2) { return 'x1="' + P(x1) + '" y1="' + P(y1) + '" x2="' + P(x2) + '" y2="' + P(y2) + '"'; }
@@ -1021,10 +1022,11 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var o = room.outline, B = RB(), setup = mode === 'setup', s = '', g = '', x, y;
     for (x = Math.floor(B.minX) + 1; x < B.maxX; x++) g += '<line class="' + (x % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(x, B.minY, x, B.maxY) + '/>';
     for (y = Math.floor(B.minY) + 1; y < B.maxY; y++) g += '<line class="' + (y % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(B.minX, y, B.maxX, y) + '/>';
-    var parkW = Math.max(B.maxX - B.minX, 20), parkY = B.maxY + PARK_TOP;
+    var parkW = Math.max(B.maxX - B.minX, 20), parkY = B.maxY + PARK_TOP, ph = parkH();
     s += '<defs><clipPath id="roomclip"><polygon points="' + pts(o) + '"/></clipPath></defs>';
-    s += '<rect class="park" x="' + P(B.minX) + '" y="' + P(parkY) + '" width="' + P(parkW) + '" height="' + P(PARK_H) + '" rx="6"/>';
-    s += '<text class="roomlbl" x="' + P(B.minX + 0.2) + '" y="' + P(parkY - 0.35) + '">Spare furniture (not in the room)</text>';
+    s += '<rect class="park" x="' + P(B.minX) + '" y="' + P(parkY) + '" width="' + P(parkW) + '" height="' + P(ph) + '" rx="6"/>';
+    if (ph === PARK_H) s += '<text class="roomlbl" x="' + P(B.minX + 0.2) + '" y="' + P(parkY - 0.35) + '">Spare furniture (not in the room)</text>';
+    else s += '<text class="roomlbl" x="' + P(B.minX + parkW / 2) + '" y="' + P(parkY + ph / 2) + '" text-anchor="middle" dominant-baseline="central">Spare furniture: drag pieces here to set them aside</text>';
     s += '<polygon class="floor" points="' + pts(o) + '"/>';
     if (opts.grid) s += '<g id="g-grid" clip-path="url(#roomclip)">' + g + '</g>';
     if (opts.zones || setup) {
@@ -1055,7 +1057,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     items.forEach(function (it) { if (selected.has(it.id)) bsel += itemSVG(it); else a += itemSVG(it); });
     s += '<g id="g-items">' + a + bsel + '</g>';
     s += '<g id="g-over">' + (setup ? setupOverlay() : arrangeOverlay()) + '</g>';
-    s += '<g class="scale" transform="translate(' + P(B.minX + parkW - 6) + ' ' + P(B.maxY + 8.73) + ')"><line x1="0" y1="0" x2="' + P(5) + '" y2="0"/>';
+    s += '<g class="scale" transform="translate(' + P(B.minX + parkW - 6) + ' ' + P(parkY + ph + 1.15) + ')"><line x1="0" y1="0" x2="' + P(5) + '" y2="0"/>';
     for (x = 0; x <= 5; x++) s += '<line x1="' + P(x) + '" y1="' + (x % 5 ? -3 : -5) + '" x2="' + P(x) + '" y2="0"/>';
     s += '<text x="0" y="13" text-anchor="middle">0</text><text x="' + P(5) + '" y="13" text-anchor="middle">5′</text></g>';
     return s;
@@ -1148,7 +1150,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
     svg.setAttribute('class', mode + (drag ? ' dragging' : ''));
     svg.innerHTML = drawing ? drawingSVG() : planSVG();
-    placeSelBar();
+    fitPlan(); placeSelBar();
   }
 
   /* ---------- side panels ---------- */
@@ -1388,6 +1390,19 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     ck.className = 'chk' + (np ? ' bad' : nw ? ' has' : '');
     ck.hidden = setup;
   }
+  /* Sizes the plan so the whole drawing fits in the space available, and the white card is exactly
+     as big as the drawing. On narrow screens it uses the full width and the page scrolls. */
+  function fitPlan() {
+    var vb = vbLock || viewBox(), c = $('canvas'), cs = getComputedStyle(c);
+    var availW = c.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), w = availW, ht = availW * vb.h / vb.w;
+    if (window.innerWidth > 900) {
+      var hint = $('hint'), bar = document.querySelector('.statusbar');
+      var availH = window.innerHeight - c.offsetTop - bar.offsetHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (hint.offsetHeight ? hint.offsetHeight + 8 : 0);
+      availH = Math.max(320, availH);
+      if (ht > availH) { ht = availH; w = ht * vb.w / vb.h; }
+    }
+    svg.style.width = Math.floor(w) + 'px'; svg.style.height = Math.floor(ht) + 'px';
+  }
   /* The small Rotate / Duplicate / Delete bar that sits just above the selected furniture. */
   function placeSelBar() {
     var bar = $('selbar'), b = null;
@@ -1407,7 +1422,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     bar.style.left = Math.round(clamp(cx - bw / 2, 4, Math.max(4, c.width - bw - 4))) + 'px';
     bar.style.top = Math.round(y) + 'px';
   }
-  function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); }
+  function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); fitPlan(); placeSelBar(); }
 
   /* ---------- arranging furniture ---------- */
   function find(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
@@ -1817,7 +1832,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   $('btn-checks').addEventListener('click', function () { panelOpen = !panelOpen; renderAll(); });
   $('btn-layouts').addEventListener('click', function () { panelOpen = true; renderAll(); $('saved-sec').scrollIntoView({ block: 'nearest' }); });
   $('btn-panel-close').addEventListener('click', function () { panelOpen = false; renderAll(); });
-  window.addEventListener('resize', placeSelBar);
+  window.addEventListener('resize', function () { fitPlan(); placeSelBar(); });
   $('btn-room-new').addEventListener('click', newRoom);
   $('btn-room-dup').addEventListener('click', dupRoom);
   $('btn-room-del').addEventListener('click', deleteRoom);
