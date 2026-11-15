@@ -147,6 +147,69 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
 .len { display: inline-flex; align-items: center; gap: 5px; }
 .len input { width: 62px; box-sizing: border-box; }
 .tips { margin: 0; padding-left: 18px !important; list-style: disc !important; font-size: 12.5px; color: var(--muted); gap: 4px !important; }
+/* layout: header bar, furniture rail on the left, plan in the middle, status bar at the bottom */
+body { padding: 0; }
+.app { max-width: none; gap: 0; min-height: 100vh; }
+.topbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { font-size: 17px; font-weight: 650; font-stretch: 80%; align-self: center; margin-right: 8px; white-space: nowrap; }
+.field { display: flex; flex-direction: column; min-width: 0; }
+.field.grow { flex: 0 1 470px; }
+.field select { min-width: 170px; }
+.spacer { flex: 1; }
+button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.menu { position: relative; }
+.menu summary { list-style: none; cursor: pointer; font-size: 13px; font-weight: 500; border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; background: var(--surface); user-select: none; -webkit-user-select: none; }
+.menu summary::-webkit-details-marker { display: none; }
+.menu summary:hover, .menu[open] summary { border-color: var(--muted); }
+.menu summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
+.menu-pop button, .menu-pop a { border: none; background: none; justify-content: flex-start; padding: 8px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink); text-decoration: none; width: 100%; box-sizing: border-box; }
+.menu-pop button:hover, .menu-pop a:hover { background: var(--bg); }
+.menu-sep { border-top: 1px solid var(--line); margin: 6px 4px; }
+.menu-pop .lbl { padding: 2px 10px; }
+.menu-pop label { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+.menu-pop input { accent-color: var(--accent); margin: 0; }
+.toolbar { border-radius: 0; border-width: 0 0 1px; }
+.work { grid-template-columns: 220px minmax(0, 1fr); gap: 0; align-items: stretch; flex: 1; }
+.work.has-panel { grid-template-columns: 220px minmax(0, 1fr) 300px; }
+.work.is-setup { grid-template-columns: minmax(0, 1fr) 320px; }
+.rail { background: var(--surface); border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.rail .lbl { padding-left: 8px; }
+.flist { display: flex; flex-direction: column; gap: 2px; }
+.flist button { border: none; background: none; width: 100%; justify-content: flex-start; gap: 8px; padding: 8px; white-space: normal; text-align: left; font-size: 13.5px; }
+.flist button:hover { background: var(--bg); }
+.flist .nm { flex: 1; min-width: 0; }
+.flist .ct { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.flist .ct.warn { color: var(--danger); }
+.flist .plus { color: var(--muted); font-size: 17px; line-height: 1; }
+.railsep { border-top: 1px solid var(--line); margin: 8px; }
+.rail .btns { padding-left: 8px; }
+.canvas { position: relative; border: none; border-radius: 0; background: var(--bg); padding: 16px; }
+#plan { max-height: calc(100vh - 165px); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-sizing: border-box; }
+.selbar { position: absolute; z-index: 10; display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
+.selbar button { border: none; padding: 5px 9px; font-size: 12.5px; }
+.selbar button:hover { background: var(--bg); }
+.panel { border-radius: 0; border-width: 0 0 0 1px; }
+.panelhead { display: flex; align-items: center; justify-content: space-between; }
+.panelhead h2 { margin: 0; }
+.statusbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 18px; padding: 8px 16px; background: var(--surface); border-top: 1px solid var(--line); font-size: 13px; position: sticky; bottom: 0; z-index: 5; }
+.statusbar .strong { font-weight: 600; }
+.statusbar #status { flex: 1; min-width: 140px; color: var(--muted); }
+.statusbar #sub { color: var(--muted); font-size: 12.5px; }
+.chk { border: none; background: none; padding: 4px 6px; font-size: 13px; }
+.chk::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.chk.has::before { background: var(--dim); }
+.chk.bad::before { background: var(--danger); }
+.hint:empty { display: none; }
+@media (max-width: 900px) {
+  .work, .work.has-panel, .work.is-setup { grid-template-columns: minmax(0, 1fr); }
+  .rail { border-right: none; border-bottom: 1px solid var(--line); }
+  .flist { flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .flist button { width: auto; border: 1px solid var(--line); padding: 6px 9px; }
+  .panel { border-width: 1px 0 0; }
+  #plan { max-height: none; }
+  .canvas { padding: 10px; }
+}
 .helplink { color: var(--accent); font-weight: 600; }
 .guide { stroke: var(--window); stroke-width: 1; stroke-dasharray: 4 3; pointer-events: none; }
 .checks li.warn button { background: color-mix(in srgb, var(--dim) 18%, transparent); }
@@ -155,11 +218,11 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
 @media print {
   @page { margin: 12mm; }
   body { background: #fff !important; padding: 0 !important; }
-  .top, .toolbar, .panel, .hint, .statusline { display: none !important; }
+  .topbar, .toolbar, .rail, .panel, .hint, .statusbar, .selbar { display: none !important; }
   #print-head { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #000; }
   .work { display: block; }
   .canvas { border: none; padding: 0; background: #fff; }
-  #plan { width: 100%; height: 7in; }
+  #plan { width: 100%; height: 7in; max-height: none; border: none; }
 }
 .types { gap: 4px !important; }
 .types button { width: 100%; justify-content: flex-start; gap: 8px; text-align: left; white-space: normal; }
@@ -202,50 +265,41 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
 <body>
 <template id="shell">
 <div class="app">
-  <header class="top">
-    <div class="titleblock">
-      <h1>Classroom Layout Planner</h1>
-      <p class="sub" id="sub"></p>
-      <p class="sub"><a class="helplink" href="help.html" target="_blank" rel="noopener">How to use</a></p>
-    </div>
-    <div class="roombox">
+  <header class="topbar">
+    <div class="brand">Classroom Layout Planner</div>
+    <div class="field">
       <label class="lbl" for="room-pick">Room</label>
-      <div class="saverow"><select id="room-pick"></select><button id="btn-setup" type="button">Room setup</button></div>
+      <select id="room-pick"></select>
     </div>
-    <div class="savebox" id="savebox">
+    <div class="field grow" id="savebox">
       <label class="lbl" for="layout-name">Layout name</label>
-      <div class="saverow"><input id="layout-name" type="text" maxlength="60" autocomplete="off"><button id="btn-save" class="primary" type="button">Save layout</button></div>
-      <div class="filerow">
-        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download</button>
-        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload</button>
+      <div class="saverow">
+        <input id="layout-name" type="text" maxlength="60" autocomplete="off" placeholder="Name this layout">
+        <button id="btn-save" class="primary" type="button">Save</button>
+        <button id="btn-layouts" type="button">Saved layouts</button>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <button id="btn-setup" class="primary" type="button" hidden>Done</button>
+    <details class="menu" id="more">
+      <summary>More</summary>
+      <div class="menu-pop">
+        <button id="menu-setup" type="button">Room setup</button>
+        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download a copy</button>
+        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload a copy</button>
         <button id="btn-print" type="button" title="Print this layout on one page.">Print</button>
-        <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
-      </div>
-    </div>
-  </header>
-  <p id="status" class="statusline" aria-live="polite"></p>
-  <div class="toolbar" id="tb-arrange" role="toolbar" aria-label="Planner tools">
-    <div class="tgroup"><span class="lbl">Add</span><div class="btns" id="add-btns"></div></div>
-    <div class="tgroup"><span class="lbl">Selection</span>
-      <div class="btns">
-        <button id="btn-rotate" type="button">Rotate 90°</button>
-        <button id="btn-dup" type="button">Duplicate</button>
-        <button id="btn-del" type="button" class="danger">Delete</button>
-      </div>
-    </div>
-    <div class="tgroup"><span class="lbl">History</span>
-      <div class="btns"><button id="btn-undo" type="button">Undo</button><button id="btn-redo" type="button">Redo</button></div>
-    </div>
-    <div class="tgroup"><span class="lbl">Show</span>
-      <div class="btns toggles">
+        <a class="helplink" href="help.html" target="_blank" rel="noopener">How to use</a>
+        <div class="menu-sep"></div>
+        <span class="lbl">Show</span>
         <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap to 3″</label>
         <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
         <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
         <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
         <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
+        <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
       </div>
-    </div>
-  </div>
+    </details>
+  </header>
   <div class="toolbar" id="tb-setup" role="toolbar" aria-label="Room setup tools" hidden>
     <div class="tgroup"><span class="lbl">This room</span>
       <div class="btns">
@@ -282,16 +336,27 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     </div>
   </div>
   <p id="print-head"></p>
-  <main class="work">
-    <section class="canvas" aria-label="Floor plan">
+  <main class="work" id="work">
+    <aside class="rail" id="tb-arrange" aria-label="Furniture">
+      <span class="lbl">Add furniture</span>
+      <div id="add-btns" class="flist"></div>
+      <div class="railsep"></div>
+      <div class="btns"><button id="btn-undo" type="button">Undo</button><button id="btn-redo" type="button">Redo</button></div>
+    </aside>
+    <section class="canvas" id="canvas" aria-label="Floor plan">
       <svg id="plan" class="arrange" viewBox="-40 -50 700 740" role="img" aria-label="Classroom floor plan you can edit"></svg>
+      <div id="selbar" class="selbar" role="toolbar" aria-label="Selected furniture" hidden>
+        <button id="btn-rotate" type="button">Rotate</button>
+        <button id="btn-dup" type="button">Duplicate</button>
+        <button id="btn-del" type="button" class="danger">Delete</button>
+      </div>
       <p class="hint" id="hint"></p>
     </section>
-    <aside class="panel" id="panel-arrange">
-      <section><h2>In the room</h2><ul id="inventory" class="inv"></ul></section>
+    <aside class="panel" id="panel-arrange" hidden>
+      <div class="panelhead"><h2>Details</h2><button id="btn-panel-close" type="button">Close</button></div>
       <section><h2>Checks</h2><ul id="checks" class="checks"></ul></section>
       <section><h2>Selected</h2><div id="selinfo"></div></section>
-      <section><h2>Saved layouts</h2><ul id="saved" class="saved"></ul></section>
+      <section id="saved-sec"><h2>Saved layouts</h2><ul id="saved" class="saved"></ul></section>
     </aside>
     <aside class="panel" id="panel-setup" hidden>
       <section><h2>Room</h2><div id="roomform" class="form"></div></section>
@@ -311,6 +376,12 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       </section>
     </aside>
   </main>
+  <footer class="statusbar">
+    <span id="seats" class="strong"></span>
+    <button id="btn-checks" type="button" class="chk" title="Show the checks"></button>
+    <span id="status" aria-live="polite"></span>
+    <span id="sub"></span>
+  </footer>
 </div>
 </template>
 <div id="root"></div>
@@ -635,6 +706,7 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   var ssel = null, sUndo = [], sRedo = [], drawing = null, vbLock = null;
   var opts = { snap: true, grid: true, zones: true, gaps: true, align: true };
   var warns = [], TOGETHER = 1, WALKWAY = 2;
+  var panelOpen = false;
   var drag = null, pendingDelete = null, pendingRoomDelete = false, pendingTypeDelete = false, issueIds = new Set(), issues = [];
 
   function sync() { if (room) room.draft = { name: name, items: clean(items), t: Date.now() }; }
@@ -1073,22 +1145,11 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
     svg.setAttribute('class', mode + (drag ? ' dragging' : ''));
     svg.innerHTML = drawing ? drawingSVG() : planSVG();
+    placeSelBar();
   }
 
   /* ---------- side panels ---------- */
   function renderPanel() {
-    var counts = {}, spare = {};
-    ORDER.forEach(function (t) { counts[t] = 0; spare[t] = 0; });
-    items.forEach(function (it) { if (isSpare(box(it))) spare[it.t]++; else counts[it.t]++; });
-    var inv = '<li class="seats"><span class="nm">Seats (chairs in the room)</span><span class="ct">' + seatCount() + '</span></li>';
-    ORDER.forEach(function (t) {
-      var T = TYPES[t], total = counts[t] + spare[t], lim = T.owned, over = lim !== null && total > lim;
-      inv += '<li><span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) +
-        (spare[t] ? ' <span class="spare">(' + spare[t] + ' spare)</span>' : '') + '</span>' +
-        '<span class="ct' + (over ? ' warn' : '') + '">' + counts[t] + (lim !== null ? ' of ' + lim : '') + (over ? ' · ' + (total - lim) + ' extra' : '') + '</span></li>';
-    });
-    $('inventory').innerHTML = inv;
-
     var ck = $('checks'); ck.innerHTML = '';
     function checkRow(x, cls) {
       var li = document.createElement('li'), b = document.createElement('button');
@@ -1119,12 +1180,12 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
       si.innerHTML = '<strong>' + selected.size + ' pieces selected</strong><span class="muted">' + ORDER.filter(function (t) { return c[t]; }).map(function (t) { return c[t] + ' × ' + esc(TYPES[t].name); }).join(', ') + '</span>';
     }
 
-    $('btn-rotate').disabled = $('btn-dup').disabled = $('btn-del').disabled = !selected.size;
     $('btn-undo').disabled = !undoStack.length; $('btn-redo').disabled = !redoStack.length;
     renderSaved();
   }
   function renderSaved() {
     var ul = $('saved'); ul.innerHTML = '';
+    $('btn-layouts').textContent = 'Saved layouts (' + room.layouts.length + ')';
     var list = room.layouts, line = spareLine();
     if (!list.length) { ul.innerHTML = '<li class="empty">Nothing saved for this room yet. Name your layout above and choose Save layout.</li>'; return; }
     list.forEach(function (s) {
@@ -1275,32 +1336,63 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
     $('btn-draw-back').disabled = !drawing || !drawing.pts.length;
   }
   function renderChrome() {
-    var B = RB(), setup = mode === 'setup', pick = $('room-pick'), ab = $('add-btns');
+    var B = RB(), setup = mode === 'setup', pick = $('room-pick'), ab = $('add-btns'), counts = {}, spare = {};
+    ORDER.forEach(function (t) { counts[t] = 0; spare[t] = 0; });
+    items.forEach(function (it) { if (isSpare(box(it))) spare[it.t]++; else counts[it.t]++; });
+    /* The rail: one row per furniture type, with how many are in the room. Clicking a row adds one. */
     ab.innerHTML = '';
     ORDER.forEach(function (t) {
-      var T = TYPES[t], b = document.createElement('button');
+      var T = TYPES[t], b = document.createElement('button'), total = counts[t] + spare[t], over = T.owned !== null && total > T.owned;
       b.type = 'button'; b.id = 'add-' + t;
-      b.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span>' + esc(T.name);
+      b.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) + '</span>' +
+        '<span class="ct' + (over ? ' warn' : '') + '">' + counts[t] + (T.owned !== null ? ' of ' + T.owned : '') + '</span><span class="plus" aria-hidden="true">+</span>';
       b.setAttribute('aria-label', 'Add ' + T.name);
-      if (T.chair) b.title = 'Adds this with a chair';
+      b.title = (T.chair ? 'Adds this with a chair. ' : '') + counts[t] + ' in the room' + (spare[t] ? ', ' + spare[t] + ' spare' : '') + (over ? ', ' + (total - T.owned) + ' more than this room has' : '');
       b.addEventListener('click', function () { addItem(t); });
       ab.appendChild(b);
     });
-    pick.innerHTML = store.rooms.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === room.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') + '<option value="+new">+ New room…</option>';
+    pick.innerHTML = store.rooms.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === room.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') +
+      '<option value="+setup">Set up this room…</option><option value="+new">+ New room…</option>';
     pick.disabled = !!drawing;
-    $('sub').innerHTML = esc(room.name) + ' · <span class="mono">' + fmtFine(B.maxX) + ' × ' + fmtFine(B.maxY) + '</span>, drawn to scale. ' + (setup ? 'You are setting up the room.' : 'Drag furniture to move it.');
-    $('btn-setup').textContent = setup ? 'Done' : 'Room setup';
-    $('btn-setup').classList.toggle('primary', setup);
+    $('sub').textContent = room.name + ' · ' + fmtFine(B.maxX) + ' × ' + fmtFine(B.maxY) + ' · one square is 1′';
+    $('btn-setup').hidden = !setup;
     $('btn-setup').disabled = !!drawing;
+    $('menu-setup').hidden = setup;
     $('savebox').hidden = setup;
     $('tb-arrange').hidden = setup;
     $('tb-setup').hidden = !setup || !!drawing;
     $('tb-draw').hidden = !drawing;
-    $('panel-arrange').hidden = setup;
+    $('panel-arrange').hidden = setup || !panelOpen;
     $('panel-setup').hidden = !setup;
-    $('hint').innerHTML = drawing ? 'Click each corner of the room in order, going around the walls. Every wall is straight across or straight up and down. Click the first corner again, or choose Finish, to close the room. One square is 1′.'
-      : setup ? 'One square is 1′. Corners and pieces snap to 3″. Your furniture is shown faded and can\'t be moved on this screen.'
-      : 'Shift-click or drag across empty floor to select several pieces. <kbd>R</kbd> rotate · <kbd>D</kbd> duplicate · <kbd>Del</kbd> delete · arrows nudge 3″ (<kbd>Shift</kbd> for 1′) · <kbd>Ctrl</kbd>+<kbd>Z</kbd> undo. Furniture in the gray strip below the room is spare and isn\'t counted.';
+    $('work').className = 'work' + (setup ? ' is-setup' : panelOpen ? ' has-panel' : '');
+    $('btn-layouts').textContent = 'Saved layouts (' + room.layouts.length + ')';
+    $('hint').textContent = drawing ? 'Click each corner of the room in order, going around the walls. Every wall is straight across or straight up and down. Click the first corner again, or choose Finish, to close the room. One square is 1′.'
+      : setup ? 'You are setting up the room. Corners and pieces snap to 3″. Your furniture is shown faded and can\'t be moved on this screen. Choose Done when you finish.'
+      : '';
+    var seats = seatCount(), np = issues.length, nw = warns.length, ck = $('btn-checks');
+    $('seats').textContent = seats + (seats === 1 ? ' seat' : ' seats');
+    ck.textContent = (np + nw) ? (np + nw) + (np + nw === 1 ? ' thing to check' : ' things to check') : 'No problems';
+    ck.className = 'chk' + (np ? ' bad' : nw ? ' has' : '');
+    ck.hidden = setup;
+  }
+  /* The small Rotate / Duplicate / Delete bar that sits just above the selected furniture. */
+  function placeSelBar() {
+    var bar = $('selbar'), b = null;
+    if (mode === 'arrange' && !drag) items.forEach(function (it) {
+      if (!selected.has(it.id)) return;
+      var x = box(it);
+      b = b ? { x1: Math.min(b.x1, x.x1), y1: Math.min(b.y1, x.y1), x2: Math.max(b.x2, x.x2), y2: Math.max(b.y2, x.y2) } : x;
+    });
+    if (!b) { bar.hidden = true; return; }
+    bar.hidden = false;
+    var r = svg.getBoundingClientRect(), c = $('canvas').getBoundingClientRect(), vb = viewBox();
+    var sc = Math.min(r.width / vb.w, r.height / vb.h);
+    var ox = r.left - c.left + (r.width - vb.w * sc) / 2, oy = r.top - c.top + (r.height - vb.h * sc) / 2;
+    var cx = ox + ((b.x1 + b.x2) / 2 * S - vb.x) * sc, top = oy + (b.y1 * S - vb.y) * sc, bottom = oy + (b.y2 * S - vb.y) * sc;
+    var bw = bar.offsetWidth, bh = bar.offsetHeight, y = top - bh - 10;
+    if (y < 4) y = bottom + 10;
+    bar.style.left = Math.round(clamp(cx - bw / 2, 4, Math.max(4, c.width - bw - 4))) + 'px';
+    bar.style.top = Math.round(y) + 'px';
   }
   function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); }
 
@@ -1690,8 +1782,19 @@ input[type="number"] { font: inherit; color: var(--ink); background: var(--surfa
   $('room-pick').addEventListener('change', function (e) {
     var v = e.target.value;
     if (v === '+new') { newRoom(); return; }
+    if (v === '+setup') { setMode('setup'); setStatus(''); return; }
     setRoom(v); setMode(mode); setStatus('Switched to "' + room.name + '".');
   });
+  $('menu-setup').addEventListener('click', function () { setMode('setup'); setStatus(''); });
+  /* The More menu closes after a choice, or when you click anywhere else. */
+  var more = $('more');
+  more.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button, a')) more.open = false; });
+  document.addEventListener('pointerdown', function (e) { if (more.open && !more.contains(e.target)) more.open = false; });
+  /* The Details panel (checks, selected piece, saved layouts) is closed until asked for. */
+  $('btn-checks').addEventListener('click', function () { panelOpen = !panelOpen; renderAll(); });
+  $('btn-layouts').addEventListener('click', function () { panelOpen = true; renderAll(); $('saved-sec').scrollIntoView({ block: 'nearest' }); });
+  $('btn-panel-close').addEventListener('click', function () { panelOpen = false; renderAll(); });
+  window.addEventListener('resize', placeSelBar);
   $('btn-room-new').addEventListener('click', newRoom);
   $('btn-room-dup').addEventListener('click', dupRoom);
   $('btn-room-del').addEventListener('click', deleteRoom);
