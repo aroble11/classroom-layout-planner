@@ -153,22 +153,15 @@ body { padding: 0; }
 .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .brand { font-size: 17px; font-weight: 650; font-stretch: 80%; align-self: center; margin-right: 8px; white-space: nowrap; }
 .field { display: flex; flex-direction: column; min-width: 0; }
-.field.grow { flex: 0 1 470px; }
+.field.grow { flex: 1 1 340px; max-width: 470px; }
 .field select { min-width: 170px; }
 .spacer { flex: 1; }
 button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.menu { position: relative; }
-.menu summary { list-style: none; cursor: pointer; font-size: 13px; font-weight: 500; border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; background: var(--surface); user-select: none; -webkit-user-select: none; }
-.menu summary::-webkit-details-marker { display: none; }
-.menu summary:hover, .menu[open] summary { border-color: var(--muted); }
-.menu summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.menu-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; width: 230px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 2px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14); }
-.menu-pop button, .menu-pop a { border: none; background: none; justify-content: flex-start; padding: 8px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 500; color: var(--ink); text-decoration: none; width: 100%; box-sizing: border-box; }
-.menu-pop button:hover, .menu-pop a:hover { background: var(--bg); }
-.menu-sep { border-top: 1px solid var(--line); margin: 6px 4px; }
-.menu-pop .lbl { padding: 2px 10px; }
-.menu-pop label { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
-.menu-pop input { accent-color: var(--accent); margin: 0; }
+.toplink { font-size: 13px; padding: 2px; text-decoration: none; margin-left: auto; }
+.toplink:hover { text-decoration: underline; }
+.showrow { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; margin-top: -4px; }
+.showrow .lbl { margin: 0 2px 0 0; }
+.showrow label { padding: 2px 0; }
 .toolbar { border-radius: 0; border-width: 0 0 1px; }
 .work { grid-template-columns: 244px minmax(0, 1fr); gap: 0; align-items: stretch; flex: 1; }
 .work.has-panel { grid-template-columns: 244px minmax(0, 1fr) 300px; }
@@ -191,6 +184,11 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .selbar { position: absolute; z-index: 10; display: flex; gap: 2px; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); }
 .selbar button { border: none; padding: 5px 9px; font-size: 12.5px; }
 .selbar button:hover { background: var(--bg); }
+.sizebox { position: absolute; z-index: 10; display: flex; flex-direction: column; gap: 5px; padding: 8px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.14); font-size: 12.5px; }
+.sizebox strong { font-size: 12.5px; }
+.sizebox .sbrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sizebox .sbk { color: var(--muted); white-space: nowrap; }
+.sizebox .len input { width: 52px; padding: 4px 6px; }
 .panel { border-radius: 0; border-width: 0 0 0 1px; }
 .panelhead { display: flex; align-items: center; justify-content: space-between; }
 .panelhead h2 { margin: 0; }
@@ -256,6 +254,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .arrange .fix, .arrange .zone { pointer-events: none; }
 .setsel { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 4 3; pointer-events: none; }
 .handle { fill: var(--surface); stroke: var(--sel); stroke-width: 1.5; cursor: nwse-resize; }
+.handle.fend.h { cursor: ew-resize; }
+.handle.fend.v { cursor: ns-resize; }
 .oldroom { fill: none; stroke: var(--grid-5); stroke-width: 2; }
 .drawline { fill: none; stroke: var(--sel); stroke-width: 2.5; stroke-linejoin: miter; }
 .drawprev { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 5 4; }
@@ -282,25 +282,26 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       </div>
     </div>
     <div class="spacer"></div>
-    <button id="btn-setup" class="primary" type="button" hidden>Done</button>
-    <details class="menu" id="more">
-      <summary>More</summary>
-      <div class="menu-pop">
-        <button id="menu-setup" type="button">Room setup</button>
+    <div class="field">
+      <span class="lbl">Copy</span>
+      <div class="btns">
         <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download a copy</button>
         <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload a copy</button>
         <button id="btn-print" type="button" title="Print this layout on one page.">Print</button>
-        <a class="helplink" href="help.html" target="_blank" rel="noopener">How to use</a>
-        <div class="menu-sep"></div>
-        <span class="lbl">Show</span>
-        <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap to 3″</label>
-        <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
-        <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
-        <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
-        <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
-        <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
       </div>
-    </details>
+    </div>
+    <button id="menu-setup" type="button">Room setup</button>
+    <button id="btn-setup" class="primary" type="button" hidden>Done</button>
+    <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
+    <div class="showrow toggles">
+      <span class="lbl" id="show-lbl">Show</span>
+      <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap to 3″</label>
+      <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
+      <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
+      <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
+      <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
+      <a class="helplink toplink" href="help.html" target="_blank" rel="noopener">How to use</a>
+    </div>
   </header>
   <div class="toolbar" id="tb-setup" role="toolbar" aria-label="Room setup tools" hidden>
     <div class="tgroup"><span class="lbl">This room</span>
@@ -352,6 +353,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
         <button id="btn-dup" type="button">Duplicate</button>
         <button id="btn-del" type="button" class="danger">Delete</button>
       </div>
+      <div id="sizebox" class="sizebox" role="group" aria-label="Size of the selected item" hidden></div>
       <p class="hint" id="hint"></p>
     </section>
     <aside class="panel" id="panel-arrange" hidden>
@@ -370,7 +372,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       <section><h2>Tips</h2>
         <ul class="tips">
           <li>Each wall shows its length. Drag that number to move the wall, or click it and type an exact length.</li>
-          <li>Drag boards, windows and doors along the walls.</li>
+          <li>A wall dragged close to lining up with another wall snaps into line.</li>
+          <li>Drag boards, windows and doors along the walls. Drag the square at either end to change the length.</li>
+          <li>The box next to the selected item lets you type an exact size.</li>
           <li>Fixtures stay put when you arrange furniture.</li>
           <li>Click a furniture type to change its name, size or count.</li>
           <li>Furniture in a clear zone is flagged.</li>
@@ -1006,11 +1010,20 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   }
   function setupOverlay() {
     var s = '', o = ssel && selObj();
+    if (drag && drag.kind === 'wall') {
+      /* The wall's number can change while it merges with another, so draw from the drag itself. */
+      var gw = drag.orig, c = gw.c + (drag.d || 0), q = drag.guide;
+      if (q) s += '<line class="guide" ' + (q.horiz ? lineAttrs(q.lo - 1, q.c, q.hi + 1, q.c) : lineAttrs(q.c, q.lo - 1, q.c, q.hi + 1)) + '/>';
+      return s + '<line class="wallsel" ' + (gw.horiz ? lineAttrs(gw.lo, c, gw.hi, c) : lineAttrs(c, gw.lo, c, gw.hi)) + '/>';
+    }
     if (!o || ssel.k === 'type') return s;
     if (ssel.k === 'wall') s += '<line class="wallsel" ' + (o.horiz ? lineAttrs(o.lo, o.c, o.hi, o.c) : lineAttrs(o.c, o.lo, o.c, o.hi)) + '/>';
     else if (ssel.k === 'feature') {
-      var pad = 0.3, b = { x1: o.x1 - pad, y1: o.y1 - pad, x2: o.x2 + pad, y2: o.y2 + pad };
+      var pad = 0.3, b = { x1: o.x1 - pad, y1: o.y1 - pad, x2: o.x2 + pad, y2: o.y2 + pad }, hz = fHoriz(o);
       s += '<rect class="setsel" ' + rectAttrs(b) + ' rx="4"/>';
+      [[1, o.x1, o.y1], [2, o.x2, o.y2]].forEach(function (h) {
+        s += '<rect class="handle fend ' + (hz ? 'h' : 'v') + '" data-k="fend" data-end="' + h[0] + '" x="' + (P(h[1]) - 6) + '" y="' + (P(h[2]) - 6) + '" width="12" height="12" rx="2"/>';
+      });
     } else {
       var bx = ssel.k === 'fixture' ? fixBox(o) : o;
       s += '<rect class="setsel" x="' + (P(bx.x1) - 3) + '" y="' + (P(bx.y1) - 3) + '" width="' + (P(bx.x2 - bx.x1) + 6) + '" height="' + (P(bx.y2 - bx.y1) + 6) + '" rx="4"/>';
@@ -1422,7 +1435,82 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     bar.style.left = Math.round(clamp(cx - bw / 2, 4, Math.max(4, c.width - bw - 4))) + 'px';
     bar.style.top = Math.round(y) + 'px';
   }
-  function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); fitPlan(); placeSelBar(); }
+  /* Where a box in feet lands on screen, relative to the canvas. */
+  function screenBox(b) {
+    var r = svg.getBoundingClientRect(), c = $('canvas').getBoundingClientRect(), vb = viewBox();
+    var sc = Math.min(r.width / vb.w, r.height / vb.h);
+    var ox = r.left - c.left + (r.width - vb.w * sc) / 2, oy = r.top - c.top + (r.height - vb.h * sc) / 2;
+    return { x1: ox + (b.x1 * S - vb.x) * sc, y1: oy + (b.y1 * S - vb.y) * sc, x2: ox + (b.x2 * S - vb.x) * sc, y2: oy + (b.y2 * S - vb.y) * sc, cw: c.width, ch: c.height };
+  }
+  /* Room setup: a small box next to the selected wall, board, door, window, fixture or clear zone,
+     for typing its exact size. Hidden while dragging. */
+  function renderSizeBox() {
+    var bx = $('sizebox'), o = (mode === 'setup' && !drawing && !drag && ssel && ssel.k !== 'type') ? selObj() : null;
+    if (!o) { bx.hidden = true; bx.removeAttribute('data-key'); return; }
+    var k = ssel.k, key = k + ':' + ssel.id, rows, b, line = false, inw = 1;
+    function row(label, id, ft) { return '<div class="sbrow"><span class="sbk">' + label + '</span>' + lenHTML(id, ft) + '</div>'; }
+    if (k === 'wall') {
+      b = o.horiz ? { x1: o.lo, y1: o.c, x2: o.hi, y2: o.c } : { x1: o.c, y1: o.lo, x2: o.c, y2: o.hi };
+      line = !o.horiz; inw = inwardSign({ x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 });
+      rows = [['Wall', null], ['Length', 'sb-len', o.hi - o.lo]];
+    } else if (k === 'feature') {
+      var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), hz = fHoriz(o);
+      b = o; line = !hz; inw = inwardSign(o);
+      rows = [[KINDS[o.kind].name, null], ['Length', 'sb-len', fLen(o)], [hz ? 'From left end of wall' : 'From top end of wall', 'sb-from', (hz ? o.x1 : o.y1) - e.lo]];
+    } else if (k === 'fixture') {
+      b = fixBox(o); rows = [['Fixture', null], ['Width', 'sb-w', o.w], ['Depth', 'sb-h', o.h]];
+    } else {
+      b = o; rows = [['Clear zone', null], ['Width', 'sb-w', o.x2 - o.x1], ['Depth', 'sb-h', o.y2 - o.y1]];
+    }
+    var focusIn = bx.contains(document.activeElement);
+    if (bx.getAttribute('data-key') === key && focusIn) {
+      /* Keep the box while someone is typing in it; just refresh the other numbers. */
+      rows.forEach(function (r) {
+        if (!r[1]) return;
+        var q = Math.max(0, Math.round(r[2] * 48)) / 4, f = Math.floor(q / 12), ft = $(r[1] + '-ft'), inch = $(r[1] + '-in');
+        if (ft && ft !== document.activeElement) ft.value = f;
+        if (inch && inch !== document.activeElement) inch.value = q - f * 12;
+      });
+    } else {
+      bx.innerHTML = rows.map(function (r) { return r[1] ? row(r[0], r[1], r[2]) : '<strong>' + esc(r[0]) + '</strong>'; }).join('');
+      bx.setAttribute('data-key', key);
+      bx.querySelectorAll('input').forEach(function (inp) { inp.addEventListener('change', applySizeBox); });
+    }
+    bx.hidden = false;
+    var s = screenBox(b), bw = bx.offsetWidth, bh = bx.offsetHeight, x, y;
+    if (line) {
+      /* Beside an up-and-down wall, on the inside of the room. */
+      x = inw > 0 ? s.x2 + 16 : s.x1 - bw - 16;
+      y = (s.y1 + s.y2) / 2 - bh / 2;
+    } else {
+      x = (s.x1 + s.x2) / 2 - bw / 2;
+      y = s.y2 + 14;
+      if (y + bh > s.ch - 4) y = s.y1 - bh - 14;
+    }
+    bx.style.left = Math.round(clamp(x, 4, Math.max(4, s.cw - bw - 4))) + 'px';
+    bx.style.top = Math.round(clamp(y, 4, Math.max(4, s.ch - bh - 4))) + 'px';
+  }
+  function applySizeBox() {
+    var o = selObj(); if (!o) return;
+    var k = ssel.k;
+    if (k === 'wall') { setWallLength(Number(ssel.id), readLen('sb-len')); return; }
+    if (k === 'feature') {
+      var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), L = readLen('sb-len'), from = readLen('sb-from');
+      if (L < 0.25) { setStatus('Enter a length of at least 3″.'); return; }
+      L = Math.min(L, e.hi - e.lo);
+      var lo = r2(clamp(e.lo + from, e.lo, e.hi - L)), hi = r2(lo + L);
+      sCommit();
+      if (e.horiz) { o.x1 = lo; o.x2 = hi; o.y1 = o.y2 = e.c; } else { o.y1 = lo; o.y2 = hi; o.x1 = o.x2 = e.c; }
+      refreshDoorZones(); changed(); return;
+    }
+    var w = readLen('sb-w'), d = readLen('sb-h');
+    if (w < 0.25 || d < 0.25) { setStatus('Enter a size of at least 3″.'); return; }
+    sCommit();
+    if (k === 'fixture') { o.w = w; o.h = d; }
+    else { o.x2 = r2(o.x1 + w); o.y2 = r2(o.y1 + d); o.auto = false; }
+    changed();
+  }
+  function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); fitPlan(); placeSelBar(); renderSizeBox(); }
 
   /* ---------- arranging furniture ---------- */
   function find(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
@@ -1520,6 +1608,18 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   }
   function featuresOn(e) {
     return room.features.filter(function (f) { return fHoriz(f) === e.horiz && Math.abs((e.horiz ? f.y1 : f.x1) - e.c) < E && (e.horiz ? f.x1 : f.y1) >= e.lo - E && (e.horiz ? f.x2 : f.y2) <= e.hi + E; });
+  }
+  /* While a wall is dragged: if it comes within about 2″ of lining up with another wall running
+     the same way, it jumps to line up exactly. Returns the adjusted distance and a guide line. */
+  function wallAlign(base, g, d) {
+    var nc = g.c + d, best = null;
+    edges(base).forEach(function (e) {
+      if (e.i === g.i || e.horiz !== g.horiz) return;
+      var off = Math.abs(e.c - nc);
+      if (off <= 0.2 && (!best || off < Math.abs(best.c - nc))) best = e;
+    });
+    if (!best) return null;
+    return { d: r2(best.c - g.c), guide: { horiz: g.horiz, c: best.c, lo: Math.min(g.lo, best.lo), hi: Math.max(g.hi, best.hi) } };
   }
   function shiftFeatures(list, horiz, delta) {
     list.forEach(function (f) { if (horiz) { f.y1 = f.y2 = r2(f.y1 + delta); } else { f.x1 = f.x2 = r2(f.x1 + delta); } });
@@ -1692,6 +1792,12 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     if (!t) { ssel = null; renderAll(); return; }
     var k = t.getAttribute('data-k'), o;
     if (k === 'handle') { o = selObj(); if (!o) return; drag = { kind: 'resize', start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false }; return; }
+    /* An end of the selected board, door or window: dragging it changes the length. */
+    if (k === 'fend') {
+      o = selObj(); if (!o) return;
+      drag = { kind: 'fend', end: Number(t.getAttribute('data-end')), start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false, edge: nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }) };
+      renderAll(); return;
+    }
     ssel = { k: k, id: t.getAttribute('data-id') }; o = selObj();
     if (!o) { ssel = null; renderAll(); return; }
     drag = { kind: k, start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false };
@@ -1704,12 +1810,21 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   }
   function setupMove(p) {
     var o = selObj(), dx = snap(p.x - drag.start.x), dy = snap(p.y - drag.start.y), g = drag.orig;
-    if (!o) return;
+    if (!o && drag.kind !== 'wall') return;
     if (drag.kind === 'wall') {
-      var base = JSON.parse(drag.base), d = g.horiz ? dy : dx, out = moveEdge(base, g.i, d);
+      var base = JSON.parse(drag.base), d = g.horiz ? dy : dx, al = opts.align ? wallAlign(base, g, d) : null;
+      if (al) d = al.d;
+      /* Cleaning first lets a wall line up exactly with one it is offset from: the short wall
+         between them shrinks to nothing and the two become one straight wall. */
+      var out = cleanOutline(moveEdge(base, g.i, d));
       if (!validOutline(out)) return;
-      room.outline = out; if (d) drag.moved = true;
+      room.outline = out; drag.d = d; drag.guide = al ? al.guide : null; if (d) drag.moved = true;
       drag.feats.forEach(function (x) { if (g.horiz) x.f.y1 = x.f.y2 = r2(x.c + d); else x.f.x1 = x.f.x2 = r2(x.c + d); });
+    } else if (drag.kind === 'fend') {
+      var ed = drag.edge, along = snap(ed.horiz ? p.x : p.y), h = fHoriz(o);
+      if (drag.end === 1) { var lo = r2(clamp(along, ed.lo, (h ? o.x2 : o.y2) - 0.25)); if (h) o.x1 = lo; else o.y1 = lo; }
+      else { var hi = r2(clamp(along, (h ? o.x1 : o.y1) + 0.25, ed.hi)); if (h) o.x2 = hi; else o.y2 = hi; }
+      drag.moved = true;
     } else if (drag.kind === 'feature') {
       var e = nearestEdge(p);
       placeOnEdge(o, e, e.horiz ? p.x : p.y, fLen(g)); drag.moved = true;
@@ -1730,11 +1845,11 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     if (d.moved) {
       sUndo.push(d.before); if (sUndo.length > 60) sUndo.shift(); sRedo = [];
       if (d.kind === 'wall') {
-        var before = room.outline.length;
+        var before = JSON.parse(d.base).length;
         room.outline = cleanOutline(room.outline);
         note = droppedNote(afterOutline(d.oldMaxY));
         if (room.outline.length !== before) ssel = null;
-      } else if (d.kind === 'feature') refreshDoorZones();
+      } else if (d.kind === 'feature' || d.kind === 'fend') refreshDoorZones();
       else if (d.kind === 'zone' || (d.kind === 'resize' && ssel.k === 'zone')) { var z = selObj(); if (z) z.auto = false; }
       saveStore();
       if (note) setStatus(note.trim());
@@ -1824,15 +1939,11 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     setRoom(v); setMode(mode); setStatus('Switched to "' + room.name + '".');
   });
   $('menu-setup').addEventListener('click', function () { setMode('setup'); setStatus(''); });
-  /* The More menu closes after a choice, or when you click anywhere else. */
-  var more = $('more');
-  more.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('button, a')) more.open = false; });
-  document.addEventListener('pointerdown', function (e) { if (more.open && !more.contains(e.target)) more.open = false; });
   /* The Details panel (checks, selected piece, saved layouts) is closed until asked for. */
   $('btn-checks').addEventListener('click', function () { panelOpen = !panelOpen; renderAll(); });
   $('btn-layouts').addEventListener('click', function () { panelOpen = true; renderAll(); $('saved-sec').scrollIntoView({ block: 'nearest' }); });
   $('btn-panel-close').addEventListener('click', function () { panelOpen = false; renderAll(); });
-  window.addEventListener('resize', function () { fitPlan(); placeSelBar(); });
+  window.addEventListener('resize', function () { fitPlan(); placeSelBar(); renderSizeBox(); });
   $('btn-room-new').addEventListener('click', newRoom);
   $('btn-room-dup').addEventListener('click', dupRoom);
   $('btn-room-del').addEventListener('click', deleteRoom);
