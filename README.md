@@ -19,7 +19,7 @@ Open it here: https://aroble11.github.io/classroom-layout-planner/
 | `width_in` | Width in inches. For a round piece, the distance across. |
 | `depth_in` | Depth in inches. Ignored for round pieces. |
 | `color` | `table` (teal), `chair` (gray) or `other` (purple) |
-| `with_chair` | `yes` if adding one should also add a chair, otherwise `no` |
+| `with_chair` | How many chairs adding one brings, as a number. Leave it as `yes` or `no` for student tables (color `table`) to get one chair per 2½ feet of width. For other furniture, `yes` means one chair. |
 
 To edit it on GitHub:
 
@@ -29,6 +29,6 @@ To edit it on GitHub:
 
 The site picks up the change within about ten minutes.
 
-Changing the chart affects new rooms only. Rooms that people have already set up keep their own furniture lists, which they edit in **Room setup**.
+Changing the chart affects new rooms only. Rooms that people have already set up keep their own furniture lists, which they change with the **Edit** button above a selected piece.
 
 If a name contains a comma, put the name in double quotes.

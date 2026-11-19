@@ -9,6 +9,7 @@ Where the built version differs from this spec:
 - A window that furniture can't go under gets a 1′ flagged strip in front of it. Door clear zones start 3′ deep.
 - Uploading a file whose room or furniture sizes differ from the stored room creates a separate room marked "(uploaded)".
 - The printed page and the look of the downloaded picture were not checked by the builder.
+- 18 Nov 2026: the separate Room setup screen was removed. The room, its walls, boards, doors, windows and clear zones are all changed on the main screen. Clear zones are attached to a wall item and move with it. Fixtures can no longer be added. Student tables bring their chairs (one per 2½′ of width). `HANDOFF.md` has the details.
 
 This spec describes the version of the planner that colleagues can use for their own classrooms. `HANDOFF.md` describes the current version, which is hard-coded to one room.
 

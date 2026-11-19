@@ -109,7 +109,7 @@ kbd { font-family: var(--font-mono); font-size: 11px; border: 1px solid var(--li
 .park { fill: var(--park); stroke: var(--line); stroke-dasharray: 5 4; }
 .roomlbl { fill: var(--muted); font-size: 11px; }
 .zone { fill: var(--danger-soft); stroke: var(--danger); stroke-width: 0.8; stroke-dasharray: 4 4; opacity: 0.85; }
-.zonelbl { fill: var(--danger); font-size: 10px; }
+.zonelbl { fill: var(--danger); font-size: 10px; pointer-events: none; }
 .it { cursor: grab; }
 .dragging .it { cursor: grabbing; }
 .it .body { stroke-width: 1; }
@@ -153,19 +153,20 @@ body { padding: 0; }
 .topbar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .brand { font-size: 17px; font-weight: 650; font-stretch: 80%; align-self: center; margin-right: 8px; white-space: nowrap; }
 .field { display: flex; flex-direction: column; min-width: 0; }
-.field.grow { flex: 1 1 340px; max-width: 470px; }
+.field.grow { flex: 1 1 260px; max-width: 470px; }
 .field select { min-width: 170px; }
 .spacer { flex: 1; }
 button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .toplink { font-size: 13px; padding: 2px; text-decoration: none; margin-left: auto; }
 .toplink:hover { text-decoration: underline; }
-.showrow { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 0 12px; margin-top: -4px; }
-.showrow .lbl { margin: 0 2px 0 0; }
-.showrow label { padding: 2px 0; }
+.rowbreak { flex-basis: 100%; height: 0; }
+.topbar .toggles { display: flex; flex-wrap: wrap; gap: 0 12px; min-height: 33px; align-items: center; }
+.topbar .toggles label { padding: 2px 0; }
+.toplink { align-self: center; }
 .toolbar { border-radius: 0; border-width: 0 0 1px; }
 .work { grid-template-columns: 244px minmax(0, 1fr); gap: 0; align-items: stretch; flex: 1; }
 .work.has-panel { grid-template-columns: 244px minmax(0, 1fr) 300px; }
-.work.is-setup { grid-template-columns: minmax(0, 1fr) 320px; }
+.work.is-drawing { grid-template-columns: minmax(0, 1fr); }
 .rail { background: var(--surface); border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .rail .lbl { padding-left: 8px; }
 .flist { display: flex; flex-direction: column; gap: 2px; }
@@ -196,7 +197,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .sizebox strong { font-size: 12.5px; }
 .sizebox .sbrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .sizebox .sbk { color: var(--muted); white-space: nowrap; }
-.sizebox .len input { width: 52px; padding: 4px 6px; }
+.sizebox .len input, .sizebox .sbnum { width: 52px; padding: 4px 6px; box-sizing: border-box; }
+.sizebox input[type="text"], .sizebox select { width: 150px; padding: 4px 6px; font-size: 12.5px; box-sizing: border-box; }
+.sizebox .sbbtn { align-self: flex-start; font-size: 12px; padding: 4px 9px; margin-top: 2px; }
 .panel { border-radius: 0; border-width: 0 0 0 1px; }
 .panelhead { display: flex; align-items: center; justify-content: space-between; }
 .panelhead h2 { margin: 0; }
@@ -210,7 +213,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .chk.bad::before { background: var(--danger); }
 .hint:empty { display: none; }
 @media (max-width: 900px) {
-  .work, .work.has-panel, .work.is-setup { grid-template-columns: minmax(0, 1fr); }
+  .work, .work.has-panel, .work.is-drawing { grid-template-columns: minmax(0, 1fr); }
   .rail { border-right: none; border-bottom: 1px solid var(--line); }
   .flist { flex-direction: row; flex-wrap: wrap; gap: 6px; }
   .frow { border: 1px solid var(--line); padding: 0 5px 0 0; }
@@ -257,8 +260,6 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
 .wallpill.v { cursor: ew-resize; }
 .wallsel { stroke: var(--sel); stroke-width: 5; pointer-events: none; }
 .walllen { fill: var(--muted); font-family: var(--font-mono) !important; font-size: 10px; pointer-events: none; }
-.setup .it { opacity: 0.3; pointer-events: none; }
-.setup .fix, .setup .zone { cursor: grab; }
 .arrange .fix, .arrange .zone { cursor: grab; }
 .setsel { fill: none; stroke: var(--sel); stroke-width: 1.5; stroke-dasharray: 4 3; pointer-events: none; }
 .handle { fill: var(--surface); stroke: var(--sel); stroke-width: 1.5; cursor: nwse-resize; }
@@ -281,6 +282,27 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       <label class="lbl" for="room-pick">Room</label>
       <select id="room-pick"></select>
     </div>
+    <div class="spacer"></div>
+    <div class="field" id="roomtools">
+      <span class="lbl">Room tools</span>
+      <div class="btns">
+        <button id="btn-draw" type="button" title="Click the corners of the room to draw a new outline.">Draw outline</button>
+        <button id="btn-flip-lr" type="button" title="Mirror the room and everything in it, left to right.">Flip left–right</button>
+        <button id="btn-flip-fb" type="button" title="Mirror the room and everything in it, front to back.">Flip front–back</button>
+        <button id="btn-room-dup" type="button" title="Make a copy of this room, with its saved layouts.">Duplicate room</button>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="field">
+      <span class="lbl">Backup and print</span>
+      <div class="btns">
+        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download a copy</button>
+        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload a copy</button>
+        <button id="btn-print" type="button" title="Print this layout on one page.">Print</button>
+      </div>
+    </div>
+    <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
+    <div class="rowbreak"></div>
     <div class="field grow" id="savebox">
       <label class="lbl" for="layout-name">Layout name</label>
       <div class="saverow">
@@ -289,55 +311,19 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
         <button id="btn-layouts" type="button">Saved layouts</button>
       </div>
     </div>
-    <div class="spacer"></div>
     <div class="field">
-      <span class="lbl">Copy</span>
-      <div class="btns">
-        <button id="btn-download" type="button" title="Download a picture of this layout. The picture can be uploaded later to bring the room and layout back.">Download a copy</button>
-        <button id="btn-upload" type="button" title="Upload a picture made with Download to bring that room and layout back.">Upload a copy</button>
-        <button id="btn-print" type="button" title="Print this layout on one page.">Print</button>
-      </div>
-    </div>
-    <button id="menu-setup" type="button">Room setup</button>
-    <button id="btn-setup" class="primary" type="button" hidden>Done</button>
-    <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
-    <div class="showrow toggles">
       <span class="lbl" id="show-lbl">Show</span>
-      <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap to 3″</label>
-      <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
-      <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
-      <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
-      <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
-      <label for="opt-walls"><input type="checkbox" id="opt-walls" checked=""> Wall lengths</label>
-      <a class="helplink toplink" href="help.html" target="_blank" rel="noopener">How to use</a>
+      <div class="toggles" role="group" aria-labelledby="show-lbl">
+        <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap to 3″</label>
+        <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
+        <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
+        <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
+        <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
+        <label for="opt-walls"><input type="checkbox" id="opt-walls" checked=""> Wall lengths</label>
+      </div>
     </div>
+    <a class="helplink toplink" href="help.html" target="_blank" rel="noopener">How to use</a>
   </header>
-  <div class="toolbar" id="tb-setup" role="toolbar" aria-label="Room setup tools" hidden>
-    <div class="tgroup"><span class="lbl">This room</span>
-      <div class="btns">
-        <button id="btn-room-new" type="button">New room</button>
-        <button id="btn-room-dup" type="button">Duplicate room</button>
-        <button id="btn-room-del" type="button" class="danger">Delete room</button>
-      </div>
-    </div>
-    <div class="tgroup"><span class="lbl">Shape</span>
-      <div class="btns">
-        <button id="btn-draw" type="button">Draw outline</button>
-        <button id="btn-flip-lr" type="button">Flip left–right</button>
-        <button id="btn-flip-fb" type="button">Flip front–back</button>
-      </div>
-    </div>
-    <div class="tgroup"><span class="lbl">Add to a wall</span><div class="btns" id="feat-btns"></div></div>
-    <div class="tgroup"><span class="lbl">Add to the floor</span>
-      <div class="btns">
-        <button id="btn-add-fixture" type="button">Fixture</button>
-        <button id="btn-add-zone" type="button">Clear zone</button>
-      </div>
-    </div>
-    <div class="tgroup"><span class="lbl">History</span>
-      <div class="btns"><button id="btn-sundo" type="button">Undo</button><button id="btn-sredo" type="button">Redo</button></div>
-    </div>
-  </div>
   <div class="toolbar" id="tb-draw" role="toolbar" aria-label="Outline drawing tools" hidden>
     <div class="tgroup"><span class="lbl">Drawing the outline</span>
       <div class="btns">
@@ -361,7 +347,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
         </div>
       </div>
       <div class="railsep"></div>
-      <span class="lbl">Add to the room</span>
+      <span class="lbl">Add to the Wall</span>
       <div id="room-add-btns" class="btns roomadd"></div>
       <div class="railsep"></div>
       <div class="btns"><button id="btn-undo" type="button">Undo</button><button id="btn-redo" type="button">Redo</button></div>
@@ -371,7 +357,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       <div id="selbar" class="selbar" role="toolbar" aria-label="Selected furniture" hidden>
         <button id="btn-rotate" type="button">Rotate</button>
         <button id="btn-dup" type="button">Duplicate</button>
-        <button id="btn-size" type="button" aria-pressed="false">Size</button>
+        <button id="btn-size" type="button" aria-pressed="false">Edit</button>
         <button id="btn-del" type="button" class="danger">Delete</button>
       </div>
       <div id="sizebox" class="sizebox" role="group" aria-label="Size of the selected item" hidden></div>
@@ -382,25 +368,6 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       <section><h2>Checks</h2><ul id="checks" class="checks"></ul></section>
       <section><h2>Selected</h2><div id="selinfo"></div></section>
       <section id="saved-sec"><h2>Saved layouts</h2><ul id="saved" class="saved"></ul></section>
-    </aside>
-    <aside class="panel" id="panel-setup" hidden>
-      <section><h2>Room</h2><div id="roomform" class="form"></div></section>
-      <section><h2>Selected</h2><div id="setupsel" class="form"></div></section>
-      <section><h2>Furniture for this room</h2>
-        <ul id="typelist" class="types"></ul>
-        <div style="margin-top:8px"><button id="btn-type-add" type="button">Add furniture type</button></div>
-      </section>
-      <section><h2>Tips</h2>
-        <ul class="tips">
-          <li>Each wall shows its length. Drag that number to move the wall, or click it and type an exact length.</li>
-          <li>A wall dragged close to lining up with another wall snaps into line.</li>
-          <li>Drag boards, windows and doors along the walls. Drag the square at either end to change the length.</li>
-          <li>The box next to the selected item lets you type an exact size.</li>
-          <li>Fixtures stay put when you arrange furniture.</li>
-          <li>Click a furniture type to change its name, size or count.</li>
-          <li>Furniture in a clear zone is flagged.</li>
-        </ul>
-      </section>
     </aside>
   </main>
   <footer class="statusbar">
@@ -419,37 +386,46 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
      smallest x and y are 0. Furniture below the room, in the gray strip, is "spare". */
   var S = 20, E = 0.01, SNAP = 0.25, SPARE_GAP = 0.73, PARK_TOP = 2.08, PARK_H = 5.5, PARK_H_EMPTY = 1.5;
   /* Furniture types belong to a room. TYPES and ORDER always describe the active room's list.
-     A type is { id, name, shape, w, h, cls, owned, chair }: cls is the color group, owned is how
-     many the room has (null for no limit), chair means adding one also adds a chair. */
+     A type is { id, name, shape, w, h, cls, owned, chairs }: cls is the color group, owned is how
+     many the room has (no longer shown; null for no limit), chairs is how many chairs adding one
+     brings with it. Student tables get one chair per 2½′ of their long side unless set by hand. */
   var TYPES = {}, ORDER = [];
   var GROUPS = { tbl: { name: 'Student table (teal)', sw: 'sw-tbl' }, chr: { name: 'Chair (gray)', sw: 'sw-chr' }, oth: { name: 'Other (purple)', sw: 'sw-oth' } };
   var SHAPES = { rect: 'Rectangle', round: 'Round', kidney: 'Kidney' };
+  function autoChairs(w, h) { return Math.max(1, Math.floor(Math.max(w, h) / 2.5 + 1e-6)); }
+  /* chairs: a number set by hand, or null to work it out from the color group and size. */
+  function chairsFor(cls, w, h, chairs) {
+    if (cls === 'chr') return 0;
+    if (typeof chairs === 'number' && isFinite(chairs)) return Math.max(0, Math.min(8, Math.round(chairs)));
+    return cls === 'tbl' ? autoChairs(w, h) : 0;
+  }
   /* The furniture of the original room. Rooms saved before furniture lists existed get this list. */
   function legacyTypes() {
     return [
-      { id: 'table', name: 'Table', shape: 'rect', w: 5, h: 2, cls: 'tbl', owned: 15, chair: false },
-      { id: 'chair', name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', owned: 30, chair: false },
-      { id: 'desk', name: 'Teacher desk', shape: 'rect', w: 3.92, h: 2.5, cls: 'oth', owned: 1, chair: false },
-      { id: 'cow', name: 'COW cart', shape: 'rect', w: 2.17, h: 2.5, cls: 'oth', owned: 1, chair: false },
-      { id: 'storage', name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', owned: 2, chair: false },
-      { id: 'shelf', name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', owned: 1, chair: false }
+      { id: 'table', name: 'Table', shape: 'rect', w: 5, h: 2, cls: 'tbl', owned: 15, chairs: 2 },
+      { id: 'chair', name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', owned: 30, chairs: 0 },
+      { id: 'desk', name: 'Teacher desk', shape: 'rect', w: 3.92, h: 2.5, cls: 'oth', owned: 1, chairs: 0 },
+      { id: 'cow', name: 'COW cart', shape: 'rect', w: 2.17, h: 2.5, cls: 'oth', owned: 1, chairs: 0 },
+      { id: 'storage', name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', owned: 2, chairs: 0 },
+      { id: 'shelf', name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', owned: 1, chairs: 0 }
     ];
   }
-  /* The starter list for new rooms. furniture.csv replaces this when it loads; this copy is the fallback. */
+  /* The starter list for new rooms. furniture.csv replaces this when it loads; this copy is the fallback.
+     chairs null means worked out from the size. */
   var STARTER = [
-    { name: 'Student desk (single)', shape: 'rect', w: 2, h: 1.5, cls: 'tbl', chair: true },
-    { name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', chair: false },
-    { name: 'Teacher desk', shape: 'rect', w: 3.917, h: 2.5, cls: 'oth', chair: false },
-    { name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', chair: false },
-    { name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', chair: false }
+    { name: 'Student desk (single)', shape: 'rect', w: 2, h: 1.5, cls: 'tbl', chairs: null },
+    { name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', chairs: null },
+    { name: 'Teacher desk', shape: 'rect', w: 3.917, h: 2.5, cls: 'oth', chairs: null },
+    { name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', chairs: null },
+    { name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', chairs: null }
   ];
   function starterTypes() {
     var seen = {};
     return STARTER.map(function (s) {
-      var id = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item', k = id, i = 2;
+      var id = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item', k = id, i = 2, h = s.shape === 'round' ? s.w : s.h;
       while (seen[k]) k = id + '-' + (i++);
       seen[k] = 1;
-      return { id: k, name: s.name, shape: s.shape, w: s.w, h: s.shape === 'round' ? s.w : s.h, cls: s.cls, owned: null, chair: s.chair };
+      return { id: k, name: s.name, shape: s.shape, w: s.w, h: h, cls: s.cls, owned: null, chairs: chairsFor(s.cls, s.w, h, s.chairs) };
     });
   }
   function splitCSV(line) {
@@ -464,7 +440,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     out.push(cur.trim());
     return out;
   }
-  /* Reads furniture.csv: name, shape, width in inches, depth in inches, color, comes with a chair. */
+  /* Reads furniture.csv: name, shape, width in inches, depth in inches, color, with_chair. with_chair
+     can be a number of chairs; otherwise student tables get chairs by size, and "yes" gives other
+     furniture one chair. */
   function parseStarter(text) {
     var out = [];
     String(text).split(/\r?\n/).forEach(function (line) {
@@ -474,7 +452,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       var sh = /round|circle/i.test(c[1]) ? 'round' : /kidney/i.test(c[1]) ? 'kidney' : 'rect';
       if (sh !== 'round' && (!isFinite(d) || d < 3 || d > 480)) return;
       var col = /chair/i.test(c[4]) ? 'chr' : /table|desk|student/i.test(c[4]) ? 'tbl' : 'oth';
-      out.push({ name: c[0].slice(0, 40), shape: sh, w: r2(w / 12), h: r2((sh === 'round' ? w : d) / 12), cls: col, chair: /^(y|yes|true|1)$/i.test(c[5] || '') });
+      var wc = (c[5] || '').trim(), nch = /^\d+$/.test(wc) ? Number(wc) : (col === 'oth' && /^(y|yes|true)$/i.test(wc) ? 1 : null);
+      out.push({ name: c[0].slice(0, 40), shape: sh, w: r2(w / 12), h: r2((sh === 'round' ? w : d) / 12), cls: col, chairs: nch });
     });
     return out;
   }
@@ -490,7 +469,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       var owned = (t.owned === null || t.owned === undefined || t.owned === '') ? null : Math.round(Number(t.owned));
       if (owned !== null && (!isFinite(owned) || owned < 0)) owned = null;
       seen[t.id] = 1;
-      out.push({ id: t.id.slice(0, 40), name: (typeof t.name === 'string' && t.name.trim()) ? t.name.trim().slice(0, 40) : 'Furniture', shape: shape, w: r2(w), h: r2(d), cls: GROUPS[t.cls] ? t.cls : 'oth', owned: owned, chair: t.chair === true });
+      var cls = GROUPS[t.cls] ? t.cls : 'oth', ch = typeof t.chairs === 'number' ? t.chairs : (cls !== 'tbl' && t.chair === true ? 1 : null);
+      out.push({ id: t.id.slice(0, 40), name: (typeof t.name === 'string' && t.name.trim()) ? t.name.trim().slice(0, 40) : 'Furniture', shape: shape, w: r2(w), h: r2(d), cls: cls, owned: owned, chairs: chairsFor(cls, w, d, ch) });
     });
     return out;
   }
@@ -690,8 +670,12 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       if (!z) return;
       var a = [num(z.x1), num(z.y1), num(z.x2), num(z.y2)];
       if (a.indexOf(null) >= 0 || a[2] <= a[0] || a[3] <= a[1]) return;
-      r.zones.push({ id: sid(z.id, 'z'), label: txt(z.label, 'Keep clear'), x1: a[0], y1: a[1], x2: a[2], y2: a[3], door: typeof z.door === 'string' ? z.door : null, auto: z.auto === true });
+      var nz = { id: sid(z.id, 'z'), label: txt(z.label, 'Keep clear'), x1: a[0], y1: a[1], x2: a[2], y2: a[3], door: typeof z.door === 'string' ? z.door : null, auto: z.auto === true };
+      var dp = num(z.depth), pr = num(z.pre), po = num(z.post);
+      if (dp !== null && dp > 0 && dp <= 40) { nz.depth = dp; nz.pre = pr !== null ? clamp(pr, 0, 40) : 0; nz.post = po !== null ? clamp(po, 0, 40) : 0; }
+      r.zones.push(nz);
     });
+    attachZones(r);
     if (full) {
       r.layouts = cleanLayouts(o.layouts, map);
       if (o.draft && Array.isArray(o.draft.items)) {
@@ -714,6 +698,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     if (!st.rooms.length) {
       /* First visit, or data from the version before rooms existed: move it into the default room. */
       var d = defaultRoom(), oldDraft = readLS(OLD_DRAFT_KEY), dmap = typeMap(d.types);
+      attachZones(d);
       d.layouts = cleanLayouts(readLS(OLD_SAVED_KEY), dmap);
       if (oldDraft && Array.isArray(oldDraft.items)) {
         var h = hydrate(oldDraft.items, dmap);
@@ -728,20 +713,19 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   /* ---------- state ---------- */
   var store = loadStore();
   var room = null, items = [], name = '';
-  var mode = 'arrange';
   var selected = new Set(), undoStack = [], redoStack = [];
   var ssel = null, sUndo = [], sRedo = [], hist = [], histRedo = [], drawing = null, vbLock = null;
   var opts = { snap: true, grid: true, zones: true, gaps: true, align: true, walls: true };
   var warns = [], TOGETHER = 1, WALKWAY = 2;
   var panelOpen = false, sizeOpen = false, sizeFor = '', sizeAll = true;
-  var drag = null, pendingDelete = null, pendingRoomDelete = false, pendingTypeDelete = false, issueIds = new Set(), issues = [];
+  var drag = null, pendingDelete = null, pendingTypeDelete = false, issueIds = new Set(), issues = [];
 
   function sync() { if (room) room.draft = { name: name, items: clean(items), t: Date.now() }; }
   function saveStore() { sync(); store.active = room.id; writeLS(STORE_KEY, store); }
   function loadRoom(r) {
     room = r; useTypes(); items = hydrate(r.draft.items) || []; name = r.draft.name || '';
     selected = new Set(); undoStack = []; redoStack = []; ssel = null; sUndo = []; sRedo = []; hist = []; histRedo = []; pendingTypeDelete = false;
-    drawing = null; vbLock = null; pendingDelete = null; pendingRoomDelete = false;
+    drawing = null; vbLock = null; pendingDelete = null; sizeOpen = false;
   }
   function setRoom(id) {
     sync();
@@ -775,9 +759,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   function fHoriz(f) { return f.y1 === f.y2; }
   function fLen(f) { return (f.x2 - f.x1) + (f.y2 - f.y1); }
   /* +1 if the room lies on the larger-coordinate side of this wall segment, otherwise -1. */
-  function inwardSign(f) {
-    var mx = (f.x1 + f.x2) / 2, my = (f.y1 + f.y2) / 2;
-    return (fHoriz(f) ? pointIn(mx, my + 0.1, room.outline) : pointIn(mx + 0.1, my, room.outline)) ? 1 : -1;
+  function inwardSign(f, outline) {
+    var mx = (f.x1 + f.x2) / 2, my = (f.y1 + f.y2) / 2, o = outline || room.outline;
+    return (fHoriz(f) ? pointIn(mx, my + 0.1, o) : pointIn(mx + 0.1, my, o)) ? 1 : -1;
   }
   function placeOnEdge(f, e, center, len) {
     len = Math.min(len, e.hi - e.lo);
@@ -794,19 +778,54 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     });
     return best;
   }
-  function doorZoneRect(f) {
-    var sg = inwardSign(f), depth = 3;
-    if (fHoriz(f)) return { x1: f.x1, x2: f.x2, y1: r2(Math.min(f.y1, f.y1 + sg * depth)), y2: r2(Math.max(f.y1, f.y1 + sg * depth)) };
-    return { y1: f.y1, y2: f.y2, x1: r2(Math.min(f.x1, f.x1 + sg * depth)), x2: r2(Math.max(f.x1, f.x1 + sg * depth)) };
+  /* Clear zones belong to a wall item (z.door is its id, whatever kind it is). The zone reaches
+     z.depth into the room and runs along the wall from z.pre before the item to z.post past it,
+     so it moves and resizes with the item. Zones from older versions are attached by attachZones. */
+  function featById(id, list) { list = list || room.features; for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+  function zoneRect(z, f, outline) {
+    var sg = inwardSign(f, outline), d = z.depth, h = fHoriz(f), c = h ? f.y1 : f.x1;
+    var lo = (h ? f.x1 : f.y1) - (z.pre || 0), hi = (h ? f.x2 : f.y2) + (z.post || 0);
+    /* The part reaching past the item stops where its wall ends. */
+    edges(outline || room.outline).forEach(function (e) {
+      if (e.horiz === h && Math.abs(e.c - c) < E && e.lo <= (h ? f.x1 : f.y1) + E && e.hi >= (h ? f.x2 : f.y2) - E) { lo = Math.max(lo, e.lo); hi = Math.min(hi, e.hi); }
+    });
+    if (h) return { x1: r2(lo), x2: r2(hi), y1: r2(Math.min(c, c + sg * d)), y2: r2(Math.max(c, c + sg * d)) };
+    return { y1: r2(lo), y2: r2(hi), x1: r2(Math.min(c, c + sg * d)), x2: r2(Math.max(c, c + sg * d)) };
   }
-  function refreshDoorZones() {
-    room.zones = room.zones.filter(function (z) { return !z.door || room.features.some(function (f) { return f.id === z.door; }); });
+  /* Works out depth, pre and post from where the zone is drawn now. Returns false if the zone
+     doesn't sit against that item's wall on the room side. */
+  function deriveZone(z, f, outline) {
+    var sg = inwardSign(f, outline), h = fHoriz(f), c = h ? f.y1 : f.x1;
+    var near = h ? (sg > 0 ? z.y1 : z.y2) : (sg > 0 ? z.x1 : z.x2), far = h ? (sg > 0 ? z.y2 : z.y1) : (sg > 0 ? z.x2 : z.x1);
+    var lo = h ? z.x1 : z.y1, hi = h ? z.x2 : z.y2, flo = h ? f.x1 : f.y1, fhi = h ? f.x2 : f.y2;
+    if (Math.abs(near - c) > 0.05 || lo >= fhi || hi <= flo) return false;
+    z.door = f.id; z.depth = r2(Math.abs(far - c)); z.pre = r2(Math.max(0, flo - lo)); z.post = r2(Math.max(0, hi - fhi));
+    return z.depth > 0;
+  }
+  function attachZones(r) {
+    r.zones.forEach(function (z) {
+      var f = z.door ? featById(z.door, r.features) : null;
+      if (f && typeof z.depth === 'number' && z.depth > 0) return;
+      if (f && deriveZone(z, f, r.outline)) return;
+      var best = null, bo = 0;
+      r.features.forEach(function (g) {
+        var h = fHoriz(g), ov = Math.min(h ? z.x2 : z.y2, h ? g.x2 : g.y2) - Math.max(h ? z.x1 : z.y1, h ? g.x1 : g.y1);
+        if (ov > bo && deriveZone(JSON.parse(JSON.stringify(z)), g, r.outline)) { best = g; bo = ov; }
+      });
+      if (best) deriveZone(z, best, r.outline);
+      else { z.door = null; delete z.depth; delete z.pre; delete z.post; }
+    });
+  }
+  /* Puts each attached zone back against its item, and drops zones whose item is gone. */
+  function refreshZones() {
+    room.zones = room.zones.filter(function (z) { return !z.door || featById(z.door); });
     room.zones.forEach(function (z) {
-      if (!z.auto || !z.door) return;
-      var f = room.features.filter(function (x) { return x.id === z.door; })[0], r = doorZoneRect(f);
+      if (!z.door) return;
+      var r = zoneRect(z, featById(z.door));
       z.x1 = r.x1; z.y1 = r.y1; z.x2 = r.x2; z.y2 = r.y2;
     });
   }
+  function zoneFor(f) { return room.zones.filter(function (z) { return z.door === f.id; })[0] || null; }
   /* After the outline changes, put each wall feature back on the nearest matching wall. Returns how many had to be removed. */
   function refitFeatures() {
     var ed = edges(room.outline), dropped = 0;
@@ -821,7 +840,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       placeOnEdge(f, best, (lo + hi) / 2, hi - lo);
       return true;
     });
-    refreshDoorZones();
+    refreshZones();
     return dropped;
   }
   /* Real clear zones plus a 1′ strip in front of any window that furniture can't go under. */
@@ -866,13 +885,6 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   nameInput.value = name;
   writeLS(STORE_KEY, store);
   if (items.length) setStatus('Picked up where you left off in this browser.');
-
-  KIND_ORDER.forEach(function (k) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.id = 'feat-' + k; b.textContent = KINDS[k].name;
-    b.addEventListener('click', function () { addFeature(k); });
-    $('feat-btns').appendChild(b);
-  });
 
   /* ---------- drawing the plan ---------- */
   function P(v) { return r2(v * S); }
@@ -1037,7 +1049,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       if (q) s += '<line class="guide" ' + (q.horiz ? lineAttrs(q.lo - 1, q.c, q.hi + 1, q.c) : lineAttrs(q.c, q.lo - 1, q.c, q.hi + 1)) + '/>';
       return s + '<line class="wallsel" ' + (gw.horiz ? lineAttrs(gw.lo, c, gw.hi, c) : lineAttrs(c, gw.lo, c, gw.hi)) + '/>';
     }
-    if (!o || ssel.k === 'type') return s;
+    if (!o) return s;
     if (ssel.k === 'wall') s += '<line class="wallsel" ' + (o.horiz ? lineAttrs(o.lo, o.c, o.hi, o.c) : lineAttrs(o.c, o.lo, o.c, o.hi)) + '/>';
     else if (ssel.k === 'feature') {
       var pad = 0.3, b = { x1: o.x1 - pad, y1: o.y1 - pad, x2: o.x2 + pad, y2: o.y2 + pad }, hz = fHoriz(o);
@@ -1045,6 +1057,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       [[1, o.x1, o.y1], [2, o.x2, o.y2]].forEach(function (h) {
         s += '<rect class="handle fend ' + (hz ? 'h' : 'v') + '" data-k="fend" data-end="' + h[0] + '" x="' + (P(h[1]) - 6) + '" y="' + (P(h[2]) - 6) + '" width="12" height="12" rx="2"/>';
       });
+      var fzn = zoneFor(o);
+      if (fzn) s += '<rect class="setsel" ' + rectAttrs(fzn) + ' rx="2"/>';
     } else {
       var bx = ssel.k === 'fixture' ? fixBox(o) : o;
       s += '<rect class="setsel" x="' + (P(bx.x1) - 3) + '" y="' + (P(bx.y1) - 3) + '" width="' + (P(bx.x2 - bx.x1) + 6) + '" height="' + (P(bx.y2 - bx.y1) + 6) + '" rx="4"/>';
@@ -1053,7 +1067,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     return s;
   }
   function planSVG() {
-    var o = room.outline, B = RB(), setup = mode === 'setup', s = '', g = '', x, y;
+    var o = room.outline, B = RB(), s = '', g = '', x, y;
     for (x = Math.floor(B.minX) + 1; x < B.maxX; x++) g += '<line class="' + (x % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(x, B.minY, x, B.maxY) + '/>';
     for (y = Math.floor(B.minY) + 1; y < B.maxY; y++) g += '<line class="' + (y % 5 ? 'gridl' : 'gridl5') + '" ' + lineAttrs(B.minX, y, B.maxX, y) + '/>';
     var parkW = Math.max(B.maxX - B.minX, 20), parkY = B.maxY + PARK_TOP, ph = parkH();
@@ -1063,7 +1077,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     else s += '<text class="roomlbl" x="' + P(B.minX + parkW / 2) + '" y="' + P(parkY + ph / 2) + '" text-anchor="middle" dominant-baseline="central">Spare furniture: drag pieces here to set them aside</text>';
     s += '<polygon class="floor" points="' + pts(o) + '"/>';
     if (opts.grid) s += '<g id="g-grid" clip-path="url(#roomclip)">' + g + '</g>';
-    if (opts.zones || setup) {
+    if (opts.zones) {
       s += '<g id="g-zones">';
       allZones().forEach(function (z) {
         s += '<rect class="zone" ' + (z.id ? 'data-k="zone" data-id="' + z.id + '" ' : '') + rectAttrs(z) + '/>' + centeredText('zonelbl', z, z.label);
@@ -1081,7 +1095,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     edges(o).forEach(function (e) {
         var mid = (e.lo + e.hi) / 2, probe = { x1: e.horiz ? mid : e.c, y1: e.horiz ? e.c : mid, x2: e.horiz ? mid : e.c, y2: e.horiz ? e.c : mid }, inw = inwardSign(probe);
         s += '<line class="wallhit ' + (e.horiz ? 'h' : 'v') + '" data-k="wall" data-id="' + e.i + '" ' + (e.horiz ? lineAttrs(e.lo, e.c, e.hi, e.c) : lineAttrs(e.c, e.lo, e.c, e.hi)) + '/>';
-        if (!setup && !opts.walls) return;
+        if (!opts.walls) return;
         var lab = fmtFine(e.hi - e.lo), pw = lab.length * 6.2 + 12;
         var tx = e.horiz ? P(mid) : P(e.c) + inw * 13, ty = e.horiz ? P(e.c) + inw * 13 : P(mid);
         s += '<g transform="translate(' + tx + ' ' + ty + ')' + (e.horiz ? '' : ' rotate(-90)') + '"><rect class="wallpill ' + (e.horiz ? 'h' : 'v') + '" data-k="wall" data-id="' + e.i + '" x="' + r2(-pw / 2) + '" y="-8" width="' + r2(pw) + '" height="16" rx="4"/>' +
@@ -1092,7 +1106,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var a = '', bsel = '';
     items.forEach(function (it) { if (selected.has(it.id)) bsel += itemSVG(it); else a += itemSVG(it); });
     s += '<g id="g-items">' + a + bsel + '</g>';
-    s += '<g id="g-over">' + (setup ? setupOverlay() : arrangeOverlay() + setupOverlay()) + '</g>';
+    s += '<g id="g-over">' + arrangeOverlay() + setupOverlay() + '</g>';
     s += '<g class="scale" transform="translate(' + P(B.minX + parkW - 6) + ' ' + P(parkY + ph + 1.15) + ')"><line x1="0" y1="0" x2="' + P(5) + '" y2="0"/>';
     for (x = 0; x <= 5; x++) s += '<line x1="' + P(x) + '" y1="' + (x % 5 ? -3 : -5) + '" x2="' + P(x) + '" y2="0"/>';
     s += '<text x="0" y="13" text-anchor="middle">0</text><text x="' + P(5) + '" y="13" text-anchor="middle">5′</text></g>';
@@ -1184,7 +1198,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     computeIssues();
     var vb = vbLock || viewBox();
     svg.setAttribute('viewBox', [vb.x, vb.y, vb.w, vb.h].join(' '));
-    svg.setAttribute('class', mode + (drag ? ' dragging' : ''));
+    svg.setAttribute('class', 'arrange' + (drag ? ' dragging' : ''));
     svg.innerHTML = drawing ? drawingSVG() : planSVG();
     fitPlan(); placeSelBar();
   }
@@ -1259,6 +1273,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var q = Math.max(0, Math.round(ft * 48)) / 4, f = Math.floor(q / 12), i = q - f * 12;
     return '<span class="len"><input type="number" id="' + id + '-ft" min="0" step="1" value="' + f + '" aria-label="feet"> ft <input type="number" id="' + id + '-in" min="0" max="11.75" step="0.25" value="' + i + '" aria-label="inches"> in</span>';
   }
+  /* A length as the feet-and-inches boxes show it, to the nearest quarter inch. */
+  function shown(ft) { return r2(Math.max(0, Math.round(ft * 48)) / 48); }
   function readLen(id) {
     var f = parseFloat($(id + '-ft').value), i = parseFloat($(id + '-in').value);
     return r2((isFinite(f) ? Math.max(0, f) : 0) + (isFinite(i) ? Math.max(0, i) : 0) / 12);
@@ -1268,132 +1284,27 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   function selObj() {
     if (!ssel) return null;
     if (ssel.k === 'wall') return edges(room.outline)[Number(ssel.id)] || null;
-    if (ssel.k === 'type') return TYPES[ssel.id] || null;
     var list = ssel.k === 'feature' ? room.features : ssel.k === 'fixture' ? room.fixtures : room.zones;
     return list.filter(function (x) { return x.id === ssel.id; })[0] || null;
   }
-  function renderSetupPanel() {
-    var B = RB(), rf = $('roomform'), sp = $('setupsel'), o = selObj(), h;
-    rf.innerHTML = '<label class="row"><span>Room name</span><input type="text" id="room-name" maxlength="60" autocomplete="off"></label>' +
-      '<div class="row"><span>Start over as a plain rectangle</span><div>Width ' + lenHTML('rect-w', B.maxX) + '</div><div>Length ' + lenHTML('rect-h', B.maxY) + '</div></div>' +
-      '<div><button type="button" id="btn-rect">Make rectangle</button></div>';
-    $('room-name').value = room.name;
-    var tl = $('typelist'); tl.innerHTML = '';
-    room.types.forEach(function (T) {
-      var li = document.createElement('li'), b = document.createElement('button');
-      b.type = 'button'; if (ssel && ssel.k === 'type' && ssel.id === T.id) b.className = 'on';
-      b.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) + '</span><span class="ct">' + (T.shape === 'round' ? fmtFine(T.w) + ' round' : fmtFine(T.w) + ' × ' + fmtFine(T.h)) + '</span>';
-      b.addEventListener('click', function () { ssel = { k: 'type', id: T.id }; pendingTypeDelete = false; renderAll(); $('setupsel').scrollIntoView({ block: 'nearest' }); });
-      li.appendChild(b); tl.appendChild(li);
-    });
-    onChange('room-name', function () { var v = $('room-name').value.trim().slice(0, 60); if (!v) return; sCommit(); room.name = v; changed(); });
-    onClick('btn-rect', function () {
-      var w = readLen('rect-w'), l = readLen('rect-h');
-      if (w < 4 || l < 4 || w > 200 || l > 200) { setStatus('Enter a width and length between 4 and 200 feet.'); return; }
-      setOutline([[0, 0], [w, 0], [w, l], [0, l]], 'The room is now a ' + fmtFine(w) + ' × ' + fmtFine(l) + ' rectangle.');
-    });
-
-    if (!o) { ssel = null; sp.innerHTML = '<span class="muted">Click a wall\'s length, a board, a door, a fixture or a clear zone to change it.</span>'; }
-    else if (ssel.k === 'wall') {
-      sp.innerHTML = '<strong>Wall</strong><div class="row"><span>Exact length</span>' + lenHTML('wall-len', o.hi - o.lo) + '</div><div><button type="button" id="btn-wall-len">Set length</button></div><span class="muted">Or drag the wall on the plan. The far end of this wall moves.</span>';
-      onClick('btn-wall-len', function () { setWallLength(Number(ssel.id), readLen('wall-len')); });
-    } else if (ssel.k === 'feature') {
-      h = '<strong>' + esc(KINDS[o.kind].name) + '</strong>';
-      if (o.kind !== 'outlet') h += '<label class="row"><span>Label</span><input type="text" id="f-label" maxlength="40" autocomplete="off"></label>';
-      h += '<div class="row"><span>Length along the wall</span>' + lenHTML('f-len', fLen(o)) + '</div>';
-      if (o.kind === 'window') h += '<label class="check"><input type="checkbox" id="f-under"' + (o.under !== false ? ' checked' : '') + '> Furniture can go under this window</label>';
-      h += '<div><button type="button" id="btn-sdel" class="danger">Delete</button></div>';
-      sp.innerHTML = h;
-      if ($('f-label')) $('f-label').value = o.label;
-      onChange('f-label', function () { sCommit(); o.label = $('f-label').value.trim().slice(0, 40); changed(); });
-      function setLen() {
-        var L = readLen('f-len'); if (L < 0.25) return;
-        var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), c = fHoriz(o) ? (o.x1 + o.x2) / 2 : (o.y1 + o.y2) / 2;
-        sCommit(); placeOnEdge(o, e, c, L); refreshDoorZones(); changed();
-      }
-      onChange('f-len-ft', setLen); onChange('f-len-in', setLen);
-      onChange('f-under', function () { sCommit(); o.under = $('f-under').checked; changed(); });
-      onClick('btn-sdel', deleteSetupSel);
-    } else if (ssel.k === 'type') {
-      var used = 0; eachStoredItem(function (it) { if (it.t === o.id) used++; });
-      h = '<strong>Furniture type</strong><label class="row"><span>Name</span><input type="text" id="t-name" maxlength="40" autocomplete="off"></label>' +
-        '<label class="row"><span>Shape</span><select id="t-shape">' + Object.keys(SHAPES).map(function (k) { return '<option value="' + k + '"' + (k === o.shape ? ' selected' : '') + '>' + SHAPES[k] + '</option>'; }).join('') + '</select></label>' +
-        (o.shape === 'round' ? '<div class="row"><span>Distance across</span>' + lenHTML('t-w', o.w) + '</div>'
-          : '<div class="row"><span>Width</span>' + lenHTML('t-w', o.w) + '</div><div class="row"><span>Depth</span>' + lenHTML('t-h', o.h) + '</div>') +
-        '<label class="row"><span>Color</span><select id="t-cls">' + Object.keys(GROUPS).map(function (k) { return '<option value="' + k + '"' + (k === o.cls ? ' selected' : '') + '>' + GROUPS[k].name + '</option>'; }).join('') + '</select></label>' +
-        '<label class="row"><span>How many this room has (leave empty for no limit)</span><input type="number" id="t-owned" min="0" step="1" value="' + (o.owned === null ? '' : o.owned) + '"></label>' +
-        (o.cls !== 'chr' ? '<label class="check"><input type="checkbox" id="t-chair"' + (o.chair ? ' checked' : '') + '> Adding one also adds a chair</label>' : '') +
-        (o.shape === 'kidney' ? '<span class="muted">Checks treat a kidney table as the rectangle around it.</span>' : '') +
-        '<div><button type="button" id="btn-tdel" class="danger' + (pendingTypeDelete ? ' confirm' : '') + '">' + (pendingTypeDelete ? 'Confirm delete' : 'Delete') + '</button></div>';
-      sp.innerHTML = h;
-      $('t-name').value = o.name;
-      onChange('t-name', function () { var v = $('t-name').value.trim().slice(0, 40); if (!v) return; sCommit(); o.name = v; changed(); });
-      onChange('t-shape', function () { sCommit(); o.shape = $('t-shape').value; if (o.shape === 'round') o.h = o.w; changed(); });
-      function setTypeSize() {
-        var w = readLen('t-w'), d = o.shape === 'round' ? w : readLen('t-h');
-        if (w < 0.25 || d < 0.25 || w > 40 || d > 40) { setStatus('Enter a size between 3″ and 40′.'); return; }
-        sCommit(); o.w = w; o.h = d; changed();
-      }
-      ['t-w-ft', 't-w-in', 't-h-ft', 't-h-in'].forEach(function (id) { onChange(id, setTypeSize); });
-      onChange('t-cls', function () { sCommit(); o.cls = $('t-cls').value; if (o.cls === 'chr') o.chair = false; changed(); });
-      onChange('t-owned', function () { var v = $('t-owned').value.trim(), nn = Math.round(Number(v)); sCommit(); o.owned = (v === '' || !isFinite(nn) || nn < 0) ? null : nn; changed(); });
-      onChange('t-chair', function () { sCommit(); o.chair = $('t-chair').checked; changed(); });
-      onClick('btn-tdel', function () {
-        if (room.types.length < 2) { setStatus('A room needs at least one furniture type.'); return; }
-        if (used && !pendingTypeDelete) { pendingTypeDelete = true; renderAll(); setStatus(used + (used === 1 ? ' piece' : ' pieces') + ' of this type in this room\'s layouts will be removed too. Choose Confirm delete to go ahead.'); return; }
-        sCommit(); pendingTypeDelete = false;
-        var id = o.id;
-        room.types = room.types.filter(function (t) { return t.id !== id; });
-        items = items.filter(function (it) { return it.t !== id; });
-        room.layouts.forEach(function (l) { l.items = l.items.filter(function (it) { return it.t !== id; }); });
-        useTypes(); ssel = null; changed(); setStatus('Deleted "' + o.name + '".');
-      });
-    } else if (ssel.k === 'fixture') {
-      sp.innerHTML = '<strong>Fixture</strong><label class="row"><span>Name</span><input type="text" id="x-name" maxlength="40" autocomplete="off" list="x-names"></label>' +
-        '<datalist id="x-names"><option value="Countertop"><option value="Sink"><option value="Projector screen"><option value="Cabinet"><option value="Pillar"></datalist>' +
-        '<div class="row"><span>Width</span>' + lenHTML('x-w', o.w) + '</div><div class="row"><span>Depth</span>' + lenHTML('x-h', o.h) + '</div>' +
-        '<div class="btns"><button type="button" id="btn-xrot">Rotate 90°</button><button type="button" id="btn-sdel" class="danger">Delete</button></div>';
-      $('x-name').value = o.name;
-      onChange('x-name', function () { var v = $('x-name').value.trim().slice(0, 40); if (!v) return; sCommit(); o.name = v; changed(); });
-      function setSize() { var w = readLen('x-w'), d = readLen('x-h'); if (w < 0.25 || d < 0.25) return; sCommit(); o.w = w; o.h = d; changed(); }
-      ['x-w-ft', 'x-w-in', 'x-h-ft', 'x-h-in'].forEach(function (id) { onChange(id, setSize); });
-      onClick('btn-xrot', function () { sCommit(); var cx = o.x + o.w / 2, cy = o.y + o.h / 2, w = o.w; o.w = o.h; o.h = w; o.x = r2(cx - o.w / 2); o.y = r2(cy - o.h / 2); changed(); });
-      onClick('btn-sdel', deleteSetupSel);
-    } else {
-      sp.innerHTML = '<strong>Clear zone</strong><label class="row"><span>Label</span><input type="text" id="z-label" maxlength="40" autocomplete="off"></label>' +
-        '<div class="row"><span>Width</span>' + lenHTML('z-w', o.x2 - o.x1) + '</div><div class="row"><span>Depth</span>' + lenHTML('z-h', o.y2 - o.y1) + '</div>' +
-        '<div><button type="button" id="btn-sdel" class="danger">Delete</button></div>';
-      $('z-label').value = o.label;
-      onChange('z-label', function () { var v = $('z-label').value.trim().slice(0, 40); if (!v) return; sCommit(); o.label = v; changed(); });
-      function setZone() { var w = readLen('z-w'), d = readLen('z-h'); if (w < 0.25 || d < 0.25) return; sCommit(); o.x2 = r2(o.x1 + w); o.y2 = r2(o.y1 + d); o.auto = false; changed(); }
-      ['z-w-ft', 'z-w-in', 'z-h-ft', 'z-h-in'].forEach(function (id) { onChange(id, setZone); });
-      onClick('btn-sdel', deleteSetupSel);
-    }
-    $('btn-sundo').disabled = !hist.length; $('btn-sredo').disabled = !histRedo.length;
-    $('btn-room-del').disabled = store.rooms.length < 2;
-    $('btn-room-del').textContent = pendingRoomDelete ? 'Confirm delete' : 'Delete room';
-    $('btn-room-del').classList.toggle('confirm', pendingRoomDelete);
-    $('btn-draw-finish').disabled = !drawing || drawing.pts.length < 3;
-    $('btn-draw-back').disabled = !drawing || !drawing.pts.length;
-  }
   function renderChrome() {
-    var B = RB(), setup = mode === 'setup', pick = $('room-pick'), ab = $('add-btns'), counts = {}, spare = {};
+    var B = RB(), pick = $('room-pick'), ab = $('add-btns'), counts = {}, spare = {};
     ORDER.forEach(function (t) { counts[t] = 0; spare[t] = 0; });
     items.forEach(function (it) { if (isSpare(box(it))) spare[it.t]++; else counts[it.t]++; });
     /* The rail: one row per furniture type. The name and the + add one, the − removes one, and the
        number between them is how many are in the room. */
     ab.innerHTML = '';
     ORDER.forEach(function (t) {
-      var T = TYPES[t], total = counts[t] + spare[t], over = T.owned !== null && total > T.owned;
+      var T = TYPES[t], total = counts[t] + spare[t];
       var row = document.createElement('div'), add = document.createElement('button'), minus = document.createElement('button'), ct = document.createElement('span'), plus = document.createElement('button');
-      var tip = (T.chair ? 'Adds this with a chair. ' : '') + counts[t] + ' in the room' + (spare[t] ? ', ' + spare[t] + ' spare' : '') + (over ? ', ' + (total - T.owned) + ' more than this room has' : '');
+      var tip = (T.chairs ? 'Adds this with ' + (T.chairs === 1 ? 'a chair' : T.chairs + ' chairs') + '. ' : '') + counts[t] + ' in the room' + (spare[t] ? ', ' + spare[t] + ' spare' : '');
       row.className = 'frow';
       add.type = 'button'; add.id = 'add-' + t; add.className = 'fname'; add.title = tip;
       add.innerHTML = '<span class="swatch ' + GROUPS[T.cls].sw + '" aria-hidden="true"></span><span class="nm">' + esc(T.name) + '</span>';
       add.setAttribute('aria-label', 'Add ' + T.name);
       minus.type = 'button'; minus.id = 'rem-' + t; minus.className = 'step'; minus.textContent = '−'; minus.title = 'Remove one';
       minus.setAttribute('aria-label', 'Remove one ' + T.name); minus.disabled = !total;
-      ct.className = 'ct' + (over ? ' warn' : ''); ct.textContent = counts[t] + (T.owned !== null ? ' of ' + T.owned : ''); ct.title = tip;
+      ct.className = 'ct'; ct.textContent = counts[t]; ct.title = tip;
       plus.type = 'button'; plus.className = 'step'; plus.textContent = '+'; plus.title = 'Add one';
       plus.setAttribute('aria-label', 'Add one ' + T.name);
       add.addEventListener('click', function () { addItem(t); });
@@ -1403,28 +1314,24 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       ab.appendChild(row);
     });
     pick.innerHTML = store.rooms.map(function (r) { return '<option value="' + esc(r.id) + '"' + (r.id === room.id ? ' selected' : '') + '>' + esc(r.name) + '</option>'; }).join('') +
-      '<option value="+setup">Set up this room…</option><option value="+new">+ New room…</option>';
+      '<option value="+new">+ New room…</option><option value="+rename">Rename this room…</option>' +
+      '<option value="+delete"' + (store.rooms.length < 2 ? ' disabled' : '') + '>Delete this room…</option>';
     pick.disabled = !!drawing;
     $('sub').textContent = room.name + ' · ' + fmtFine(B.maxX) + ' × ' + fmtFine(B.maxY) + ' · one square is 1′';
-    $('btn-setup').hidden = !setup;
-    $('btn-setup').disabled = !!drawing;
-    $('menu-setup').hidden = setup;
-    $('savebox').hidden = setup;
-    $('tb-arrange').hidden = setup;
-    $('tb-setup').hidden = !setup || !!drawing;
+    ['btn-draw', 'btn-flip-lr', 'btn-flip-fb', 'btn-room-dup', 'btn-save', 'btn-layouts', 'btn-download', 'btn-upload', 'btn-print'].forEach(function (id) { $(id).disabled = !!drawing; });
+    $('tb-arrange').hidden = !!drawing;
     $('tb-draw').hidden = !drawing;
-    $('panel-arrange').hidden = setup || !panelOpen;
-    $('panel-setup').hidden = !setup;
-    $('work').className = 'work' + (setup ? ' is-setup' : panelOpen ? ' has-panel' : '');
+    $('panel-arrange').hidden = !panelOpen || !!drawing;
+    $('work').className = 'work' + (drawing ? ' is-drawing' : panelOpen ? ' has-panel' : '');
     $('btn-layouts').textContent = 'Saved layouts (' + room.layouts.length + ')';
-    $('hint').textContent = drawing ? 'Click each corner of the room in order, going around the walls. Every wall is straight across or straight up and down. Click the first corner again, or choose Finish, to close the room. One square is 1′.'
-      : setup ? 'You are setting up the room. Corners and pieces snap to 3″. Your furniture is shown faded and can\'t be moved on this screen. Choose Done when you finish.'
-      : '';
+    $('hint').textContent = drawing ? 'Click each corner of the room in order, going around the walls. Every wall is straight across or straight up and down. Click the first corner again, or choose Finish, to close the room. One square is 1′.' : '';
+    $('btn-draw-finish').disabled = !drawing || drawing.pts.length < 3;
+    $('btn-draw-back').disabled = !drawing || !drawing.pts.length;
     var seats = seatCount(), np = issues.length, nw = warns.length, ck = $('btn-checks');
     $('seats').textContent = seats + (seats === 1 ? ' seat' : ' seats');
     ck.textContent = (np + nw) ? (np + nw) + (np + nw === 1 ? ' thing to check' : ' things to check') : 'No problems';
     ck.className = 'chk' + (np ? ' bad' : nw ? ' has' : '');
-    ck.hidden = setup;
+    ck.hidden = !!drawing;
   }
   /* Sizes the plan so the whole drawing fits in the space available, and the white card is exactly
      as big as the drawing. On narrow screens it uses the full width and the page scrolls. */
@@ -1442,7 +1349,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   /* The small Rotate / Duplicate / Delete bar that sits just above the selected furniture. */
   function placeSelBar() {
     var bar = $('selbar'), b = null;
-    if (mode === 'arrange' && !drag) items.forEach(function (it) {
+    if (!drag && !drawing) items.forEach(function (it) {
       if (!selected.has(it.id)) return;
       var x = box(it);
       b = b ? { x1: Math.min(b.x1, x.x1), y1: Math.min(b.y1, x.y1), x2: Math.max(b.x2, x.x2), y2: Math.max(b.y2, x.y2) } : x;
@@ -1451,7 +1358,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     bar.hidden = false;
     var st = sizeTarget();
     $('btn-size').disabled = !st;
-    $('btn-size').title = st ? 'Change the size' : 'Select pieces of one kind to change their size';
+    $('btn-size').title = st ? 'Change the name, size, color or chairs' : 'Select pieces of one kind to edit them';
     var r = svg.getBoundingClientRect(), c = $('canvas').getBoundingClientRect(), vb = viewBox();
     var sc = Math.min(r.width / vb.w, r.height / vb.h);
     var ox = r.left - c.left + (r.width - vb.w * sc) / 2, oy = r.top - c.top + (r.height - vb.h * sc) / 2;
@@ -1468,60 +1375,78 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var ox = r.left - c.left + (r.width - vb.w * sc) / 2, oy = r.top - c.top + (r.height - vb.h * sc) / 2;
     return { x1: ox + (b.x1 * S - vb.x) * sc, y1: oy + (b.y1 * S - vb.y) * sc, x2: ox + (b.x2 * S - vb.x) * sc, y2: oy + (b.y2 * S - vb.y) * sc, cw: c.width, ch: c.height };
   }
-  /* Room setup: a small box next to the selected wall, board, door, window, fixture or clear zone,
-     for typing its exact size. Hidden while dragging. */
-  /* The furniture the Size box works on: the selected pieces, if they are all one type. */
+  /* The furniture the Edit box works on: the selected pieces, if they are all one type. */
   function sizeTarget() {
     var list = items.filter(function (it) { return selected.has(it.id); });
     if (!list.length || list.some(function (it) { return it.t !== list[0].t; })) return null;
     return { T: TYPES[list[0].t], list: list, key: 'it:' + list.map(function (it) { return it.id; }).join(',') };
   }
+  /* The Edit box: a small box next to the selected furniture, wall, board, door, window, fixture
+     or clear zone, for typing exact sizes and changing its other settings. Hidden while dragging.
+     For furniture it opens with the Edit button; for everything else it shows on selection. */
   function renderSizeBox() {
     var bx = $('sizebox'), o = null, fz = null;
     if (!drawing && !drag) {
-      if (ssel && ssel.k !== 'type') o = selObj();
-      else if (mode === 'arrange' && sizeOpen) { fz = sizeTarget(); if (!fz || fz.key !== sizeFor) { sizeOpen = false; fz = null; } }
+      if (ssel) o = selObj();
+      else if (sizeOpen) { fz = sizeTarget(); if (!fz || fz.key !== sizeFor) { sizeOpen = false; fz = null; } }
     }
     $('btn-size').setAttribute('aria-pressed', sizeOpen ? 'true' : 'false');
     if (!o && !fz) { bx.hidden = true; bx.removeAttribute('data-key'); return; }
     var k = fz ? 'furn' : ssel.k, key = fz ? fz.key : k + ':' + ssel.id, rows, b, line = false, inw = 1;
-    function row(label, id, ft) { return '<div class="sbrow"><span class="sbk">' + label + '</span>' + lenHTML(id, ft) + '</div>'; }
+    function opts(map, cur) { return Object.keys(map).map(function (x) { return '<option value="' + x + '"' + (x === cur ? ' selected' : '') + '>' + esc(typeof map[x] === 'string' ? map[x] : map[x].name) + '</option>'; }).join(''); }
     if (fz) {
       var T = fz.T, rot = fz.list[0].r % 2, n = fz.list.length;
       fz.list.forEach(function (it) { var x = box(it); b = b ? { x1: Math.min(b.x1, x.x1), y1: Math.min(b.y1, x.y1), x2: Math.max(b.x2, x.x2), y2: Math.max(b.y2, x.y2) } : x; });
-      rows = [[T.name + (n > 1 ? ' · ' + n + ' pieces' : ''), null]].concat(T.shape === 'round' ? [['Across', 'sb-w', T.w]]
-        : [['Width', 'sb-w', rot ? T.h : T.w], ['Depth', 'sb-h', rot ? T.w : T.h]]);
-      rows.push(['check']);
+      rows = [['head', 'Furniture' + (n > 1 ? ' · ' + n + ' pieces' : '')], ['text', 'Name', 'sb-name', T.name]];
+      rows = rows.concat(T.shape === 'round' ? [['len', 'Across', 'sb-w', T.w]] : [['len', 'Width', 'sb-w', rot ? T.h : T.w], ['len', 'Depth', 'sb-h', rot ? T.w : T.h]]);
+      rows.push(['check', 'Resize every ' + T.name, 'sb-all', sizeAll]);
+      rows.push(['select', 'Color', 'sb-cls', opts(GROUPS, T.cls)], ['select', 'Shape', 'sb-shape', opts(SHAPES, T.shape)]);
+      if (T.cls !== 'chr') rows.push(['num', 'Chairs with each', 'sb-chairs', T.chairs]);
+      rows.push(['button', pendingTypeDelete ? 'Confirm: remove ' + T.name : 'Remove from the list', 'sb-tdel']);
     } else if (k === 'wall') {
       b = o.horiz ? { x1: o.lo, y1: o.c, x2: o.hi, y2: o.c } : { x1: o.c, y1: o.lo, x2: o.c, y2: o.hi };
       line = !o.horiz; inw = inwardSign({ x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 });
-      rows = [['Wall', null], ['Length', 'sb-len', o.hi - o.lo]];
+      rows = [['head', 'Wall'], ['len', 'Length', 'sb-len', o.hi - o.lo]];
     } else if (k === 'feature') {
-      var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), hz = fHoriz(o);
+      var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), hz = fHoriz(o), zn = zoneFor(o);
       b = o; line = !hz; inw = inwardSign(o);
-      rows = [[KINDS[o.kind].name, null], ['Length', 'sb-len', fLen(o)], [hz ? 'From left end of wall' : 'From top end of wall', 'sb-from', (hz ? o.x1 : o.y1) - e.lo]];
+      rows = [['head', KINDS[o.kind].name]];
+      if (o.kind !== 'outlet') rows.push(['text', 'Label', 'sb-name', o.label]);
+      rows.push(['len', 'Length', 'sb-len', fLen(o)], ['len', hz ? 'From left end of wall' : 'From top end of wall', 'sb-from', (hz ? o.x1 : o.y1) - e.lo]);
+      if (o.kind === 'window') rows.push(['check', 'Furniture can go under', 'sb-under', o.under !== false]);
+      rows.push(['check', 'Keep clear in front', 'sb-keep', !!zn]);
+      if (zn) rows.push(['len', 'How far', 'sb-zd', zn.depth]);
+      rows.push(['button', 'Delete', 'sb-del']);
     } else if (k === 'fixture') {
-      b = fixBox(o); rows = [['Fixture', null], ['Width', 'sb-w', o.w], ['Depth', 'sb-h', o.h]];
+      b = fixBox(o);
+      rows = [['head', 'Fixture'], ['text', 'Name', 'sb-name', o.name], ['len', 'Width', 'sb-w', o.w], ['len', 'Depth', 'sb-h', o.h], ['button', 'Delete', 'sb-del']];
     } else {
-      b = o; rows = [['Clear zone', null], ['Width', 'sb-w', o.x2 - o.x1], ['Depth', 'sb-h', o.y2 - o.y1]];
+      b = o;
+      rows = [['head', 'Clear zone'], ['len', 'Width', 'sb-w', o.x2 - o.x1], ['len', 'Depth', 'sb-h', o.y2 - o.y1], ['button', 'Delete', 'sb-del']];
     }
     var focusIn = bx.contains(document.activeElement);
     if (bx.getAttribute('data-key') === key && focusIn) {
       /* Keep the box while someone is typing in it; just refresh the other numbers. */
       rows.forEach(function (r) {
-        if (!r[1]) return;
-        var q = Math.max(0, Math.round(r[2] * 48)) / 4, f = Math.floor(q / 12), ft = $(r[1] + '-ft'), inch = $(r[1] + '-in');
+        if (r[0] !== 'len') return;
+        var q = Math.max(0, Math.round(r[3] * 48)) / 4, f = Math.floor(q / 12), ft = $(r[2] + '-ft'), inch = $(r[2] + '-in');
         if (ft && ft !== document.activeElement) ft.value = f;
         if (inch && inch !== document.activeElement) inch.value = q - f * 12;
       });
     } else {
       bx.innerHTML = rows.map(function (r) {
-        if (r[0] === 'check') return '<label class="sbcheck"><input type="checkbox" id="sb-all"' + (sizeAll ? ' checked' : '') + '> Resize every ' + esc(fz.T.name) + '</label>';
-        return r[1] ? row(r[0], r[1], r[2]) : '<strong>' + esc(r[0]) + '</strong>';
+        var t = r[0];
+        if (t === 'head') return '<strong>' + esc(r[1]) + '</strong>';
+        if (t === 'len') return '<div class="sbrow"><span class="sbk">' + esc(r[1]) + '</span>' + lenHTML(r[2], r[3]) + '</div>';
+        if (t === 'text') return '<label class="sbrow"><span class="sbk">' + esc(r[1]) + '</span><input type="text" id="' + r[2] + '" maxlength="40" autocomplete="off" value="' + esc(r[3]) + '"></label>';
+        if (t === 'select') return '<label class="sbrow"><span class="sbk">' + esc(r[1]) + '</span><select id="' + r[2] + '">' + r[3] + '</select></label>';
+        if (t === 'num') return '<label class="sbrow"><span class="sbk">' + esc(r[1]) + '</span><input type="number" class="sbnum" id="' + r[2] + '" min="0" max="8" step="1" value="' + r[3] + '"></label>';
+        if (t === 'check') return '<label class="sbcheck"><input type="checkbox" id="' + r[2] + '"' + (r[3] ? ' checked' : '') + '> ' + esc(r[1]) + '</label>';
+        return '<button type="button" class="danger sbbtn' + (r[2] === 'sb-tdel' && pendingTypeDelete ? ' confirm' : '') + '" id="' + r[2] + '">' + esc(r[1]) + '</button>';
       }).join('');
       bx.setAttribute('data-key', key);
-      bx.querySelectorAll('input[type="number"]').forEach(function (inp) { inp.addEventListener('change', applySizeBox); });
-      if ($('sb-all')) $('sb-all').addEventListener('change', function () { sizeAll = $('sb-all').checked; });
+      bx.querySelectorAll('.len input').forEach(function (inp) { inp.addEventListener('change', applySizeBox); });
+      bindBox();
     }
     bx.hidden = false;
     var s = screenBox(b), bw = bx.offsetWidth, bh = bx.offsetHeight, x, y;
@@ -1537,25 +1462,80 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     bx.style.left = Math.round(clamp(x, 4, Math.max(4, s.cw - bw - 4))) + 'px';
     bx.style.top = Math.round(clamp(y, 4, Math.max(4, s.ch - bh - 4))) + 'px';
   }
+  /* Rebuild the Edit box from scratch after a change that alters which rows it has. */
+  function rebuildBox() { $('sizebox').removeAttribute('data-key'); changed(); }
+  function bindBox() {
+    var fz = ssel ? null : sizeTarget(), T = fz && fz.T, o = ssel ? selObj() : null;
+    onChange('sb-name', function () {
+      var v = $('sb-name').value.trim().slice(0, 40);
+      if (T) { if (!v) return; sCommit(); T.name = v; rebuildBox(); return; }
+      if (!o) return;
+      sCommit();
+      if (ssel.k === 'feature') o.label = v; else if (v) o.name = v;
+      changed();
+    });
+    onChange('sb-all', function () { sizeAll = $('sb-all').checked; });
+    onChange('sb-cls', function () { var v = $('sb-cls').value; sCommit(); T.cls = v; T.chairs = chairsFor(v, T.w, T.h, null); rebuildBox(); });
+    onChange('sb-shape', function () { sCommit(); T.shape = $('sb-shape').value; if (T.shape === 'round') T.h = T.w; rebuildBox(); });
+    onChange('sb-chairs', function () {
+      var n = Math.round(Number($('sb-chairs').value));
+      if (!isFinite(n) || n < 0 || n > 8) { setStatus('Enter a number of chairs from 0 to 8.'); return; }
+      sCommit(); T.chairs = n; changed();
+      setStatus('Each new ' + T.name + ' now comes with ' + (n === 0 ? 'no chairs' : n === 1 ? 'one chair' : n + ' chairs') + '. Pieces already in the room are unchanged.');
+    });
+    onClick('sb-tdel', function () { deleteType(T); });
+    onChange('sb-under', function () { sCommit(); o.under = $('sb-under').checked; changed(); });
+    onChange('sb-keep', function () {
+      sCommit();
+      if ($('sb-keep').checked) { room.zones.push({ id: newId('z'), label: 'Keep clear', x1: 0, y1: 0, x2: 0, y2: 0, door: o.id, auto: false, depth: 3, pre: 0, post: 0 }); refreshZones(); }
+      else room.zones = room.zones.filter(function (z) { return z.door !== o.id; });
+      rebuildBox();
+    });
+    onClick('sb-del', deleteSetupSel);
+  }
+  /* Removes a furniture type from the room's list, and every piece of it, after a second click. */
+  function deleteType(T) {
+    if (room.types.length < 2) { setStatus('A room needs at least one kind of furniture.'); return; }
+    var used = 0; eachStoredItem(function (it) { if (it.t === T.id) used++; });
+    if (!pendingTypeDelete) {
+      pendingTypeDelete = true; rebuildBox();
+      setStatus('This removes "' + T.name + '" from the furniture list' + (used ? ', with ' + used + (used === 1 ? ' piece' : ' pieces') + ' in this room and its saved layouts' : '') + '. Click again to confirm.');
+      return;
+    }
+    sCommit(); pendingTypeDelete = false;
+    var id = T.id;
+    room.types = room.types.filter(function (t) { return t.id !== id; });
+    items = items.filter(function (it) { return it.t !== id; });
+    room.layouts.forEach(function (l) { l.items = l.items.filter(function (it) { return it.t !== id; }); });
+    useTypes(); selected = new Set(); sizeOpen = false; changed();
+    setStatus('Removed "' + T.name + '" from the list. Undo brings it back.');
+  }
   function applySizeBox() {
     if (!ssel) { applyFurnitureSize(); return; }
     var o = selObj(); if (!o) return;
     var k = ssel.k;
     if (k === 'wall') { setWallLength(Number(ssel.id), readLen('sb-len')); return; }
     if (k === 'feature') {
-      var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), L = readLen('sb-len'), from = readLen('sb-from');
+      var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), L = readLen('sb-len'), from = readLen('sb-from'), zn = zoneFor(o);
+      var curFrom = (fHoriz(o) ? o.x1 : o.y1) - e.lo;
+      /* Numbers left as shown keep their exact value, so changing one box doesn't nudge the rest. */
+      if (L === shown(fLen(o))) L = fLen(o);
+      if (from === shown(curFrom)) from = curFrom;
       if (L < 0.25) { setStatus('Enter a length of at least 3″.'); return; }
+      var zd = zn && $('sb-zd-ft') ? readLen('sb-zd') : null;
+      if (zd !== null && (zd < 0.25 || zd > 40)) { setStatus('Enter a clear distance between 3″ and 40′.'); return; }
       L = Math.min(L, e.hi - e.lo);
       var lo = r2(clamp(e.lo + from, e.lo, e.hi - L)), hi = r2(lo + L);
       sCommit();
       if (e.horiz) { o.x1 = lo; o.x2 = hi; o.y1 = o.y2 = e.c; } else { o.y1 = lo; o.y2 = hi; o.x1 = o.x2 = e.c; }
-      refreshDoorZones(); changed(); return;
+      if (zd !== null) zn.depth = zd;
+      refreshZones(); changed(); return;
     }
     var w = readLen('sb-w'), d = readLen('sb-h');
     if (w < 0.25 || d < 0.25) { setStatus('Enter a size of at least 3″.'); return; }
     sCommit();
     if (k === 'fixture') { o.w = w; o.h = d; }
-    else { o.x2 = r2(o.x1 + w); o.y2 = r2(o.y1 + d); o.auto = false; }
+    else { o.x2 = r2(o.x1 + w); o.y2 = r2(o.y1 + d); }
     changed();
   }
   /* Changes the size of the selected furniture. With "Resize every ..." ticked, the furniture type
@@ -1563,9 +1543,12 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
      type of their own, named with the new size, which is reused if it already exists. */
   function applyFurnitureSize() {
     var fz = sizeTarget(); if (!fz) return;
-    var T = fz.T, round = T.shape === 'round', w = readLen('sb-w'), d = round ? w : readLen('sb-h');
+    var T = fz.T, round = T.shape === 'round', rot = fz.list[0].r % 2, w = readLen('sb-w'), d = round ? w : readLen('sb-h');
+    var cw = rot && !round ? T.h : T.w, cd = rot && !round ? T.w : T.h;
+    if (w === shown(cw)) w = cw;
+    if (round) d = w; else if (d === shown(cd)) d = cd;
     if (w < 0.25 || d < 0.25 || w > 40 || d > 40) { setStatus('Enter a size between 3″ and 40′.'); return; }
-    var rot = fz.list[0].r % 2, tw = r2(rot && !round ? d : w), th = r2(rot && !round ? w : d);
+    var tw = r2(rot && !round ? d : w), th = r2(rot && !round ? w : d);
     if (tw === T.w && th === T.h) return;
     sCommit();
     var label = round ? fmtFine(tw) + ' across' : fmtFine(tw) + ' × ' + fmtFine(th);
@@ -1575,14 +1558,14 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     } else {
       var base = T.name.replace(/\s*\([^)]*\)$/, '').slice(0, 24), nm = base + ' (' + (round ? fmtFine(tw) + ' round' : fmtFine(tw) + ' × ' + fmtFine(th)) + ')';
       var nt = room.types.filter(function (x) { return x.name === nm && x.shape === T.shape && x.cls === T.cls && x.w === tw && x.h === th; })[0];
-      if (!nt) { nt = { id: newId('t'), name: nm, shape: T.shape, w: tw, h: th, cls: T.cls, owned: null, chair: false }; room.types.push(nt); }
+      if (!nt) { nt = { id: newId('t'), name: nm, shape: T.shape, w: tw, h: th, cls: T.cls, owned: null, chairs: T.chairs }; room.types.push(nt); }
       fz.list.forEach(function (it) { it.t = nt.id; });
       useTypes();
       setStatus((fz.list.length === 1 ? 'This piece is' : 'These pieces are') + ' now "' + nm + '". Other pieces kept their size.');
     }
     changed();
   }
-  function renderAll() { renderPlan(); renderChrome(); if (mode === 'setup') renderSetupPanel(); else renderPanel(); fitPlan(); placeSelBar(); renderSizeBox(); }
+  function renderAll() { renderPlan(); renderChrome(); renderPanel(); fitPlan(); placeSelBar(); renderSizeBox(); }
 
   /* ---------- arranging furniture ---------- */
   function find(id) { for (var i = 0; i < items.length; i++) if (items[i].id === id) return items[i]; return null; }
@@ -1622,13 +1605,19 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var T = TYPES[t], n = items.filter(function (x) { return x.t === t; }).length % 6, c = roomCenter();
     var it = mk(t, r2(snap(c.x - T.w / 2) + n * 0.5), r2(snap(c.y - T.h / 2) + n * 0.5), 0), sel = [it.id];
     items.push(it);
-    var ch = T.chair ? ORDER.filter(function (id) { return TYPES[id].cls === 'chr'; })[0] : null;
+    /* Its chairs go along the long side, spread evenly, facing the table: below a wide piece,
+       to the right of a tall one. */
+    var nc = T.chairs || 0, ch = nc ? ORDER.filter(function (id) { return TYPES[id].cls === 'chr'; })[0] : null;
     if (ch) {
-      var C = TYPES[ch], chair = mk(ch, r2(it.x + (T.w - C.w) / 2), r2(it.y + T.h + 0.25), 0);
-      items.push(chair); sel.push(chair.id);
+      var C = TYPES[ch], wide = T.w >= T.h, slot = (wide ? T.w : T.h) / nc;
+      for (var i = 0; i < nc; i++) {
+        var mid = slot * (i + 0.5), chair = wide ? mk(ch, r2(it.x + mid - C.w / 2), r2(it.y + T.h + 0.25), 0)
+          : mk(ch, r2(it.x + T.w + 0.25), r2(it.y + mid - C.w / 2), 3);
+        items.push(chair); sel.push(chair.id);
+      }
     }
     selected = new Set(sel); changed();
-    if (ch) setStatus('Added a ' + T.name.toLowerCase() + ' with a chair. They are separate pieces: click one to move it on its own.');
+    if (ch) setStatus('Added a ' + T.name.toLowerCase() + ' with ' + (nc === 1 ? 'a chair' : nc + ' chairs') + '. They are separate pieces: click one to move it on its own.');
   }
   /* Removes one piece of a type: a selected one if there is one, otherwise the one added most recently. */
   function removeItem(t) {
@@ -1669,7 +1658,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     changed();
   }
 
-  /* ---------- room setup ---------- */
+  /* ---------- changing the room ---------- */
   function roomSnap() { sync(); return JSON.stringify(room); }
   function pushS(before) { sUndo.push(before); if (sUndo.length > 60) sUndo.shift(); mark('s'); }
   function sCommit() { pushS(roomSnap()); }
@@ -1678,8 +1667,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     store.rooms[i] = r; room = r; useTypes(); items = hydrate(r.draft.items) || []; name = r.draft.name || '';
     ssel = null; selected = new Set();
   }
-  function setMode(m) {
-    mode = m; drawing = null; vbLock = null; drag = null; ssel = null; selected = new Set(); pendingRoomDelete = false;
+  /* Clears any selection, drag or drawing in progress and redraws everything. */
+  function resetView() {
+    drawing = null; vbLock = null; drag = null; ssel = null; selected = new Set(); sizeOpen = false; pendingTypeDelete = false;
     renderAll();
   }
   function droppedNote(n) { return n ? ' ' + n + (n === 1 ? ' wall feature was' : ' wall features were') + ' removed because no wall is near enough.' : ''; }
@@ -1738,6 +1728,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     room.zones.forEach(function (z) {
       var a;
       if (lr) { a = r2(W - z.x2); z.x2 = r2(W - z.x1); z.x1 = a; } else { a = r2(H - z.y2); z.y2 = r2(H - z.y1); z.y1 = a; }
+      /* Mirroring swaps which end of its item the zone reaches past. */
+      var f = z.door ? featById(z.door) : null;
+      if (f) deriveZone(z, f);
     });
     eachStoredItem(function (it) {
       if (it.y >= line) return;
@@ -1755,42 +1748,21 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var f = { id: newId('f'), kind: kind, label: kind === 'outlet' ? '' : KINDS[kind].name, x1: 0, y1: 0, x2: 0, y2: 0, under: true };
     placeOnEdge(f, e, (e.lo + e.hi) / 2, KINDS[kind].len);
     room.features.push(f);
-    if (kind === 'door') { var z = doorZoneRect(f); room.zones.push({ id: newId('z'), label: 'Keep clear', x1: z.x1, y1: z.y1, x2: z.x2, y2: z.y2, door: f.id, auto: true }); }
+    if (kind === 'door') { room.zones.push({ id: newId('z'), label: 'Keep clear', x1: 0, y1: 0, x2: 0, y2: 0, door: f.id, auto: false, depth: 3, pre: 0, post: 0 }); refreshZones(); }
     ssel = { k: 'feature', id: f.id }; changed();
     setStatus('Added a ' + KINDS[kind].name.toLowerCase() + '. Drag it along the walls to where it belongs.');
   }
-  function addType() {
-    sCommit();
-    var t = { id: newId('t'), name: 'New furniture', shape: 'rect', w: 3, h: 2, cls: 'oth', owned: null, chair: false };
-    room.types.push(t); useTypes(); ssel = { k: 'type', id: t.id }; changed();
-    setStatus('Added a furniture type. Give it a name and a size.');
-  }
-  function addFixture() {
-    selected = new Set();
-    sCommit();
-    var c = roomCenter(), f = { id: newId('x'), name: 'Fixture', x: r2(snap(c.x - 2)), y: r2(snap(c.y - 1)), w: 4, h: 2 };
-    room.fixtures.push(f); ssel = { k: 'fixture', id: f.id }; changed();
-    setStatus('Added a fixture. Name it and set its size on the right, then drag it into place.');
-  }
-  function addZone() {
-    selected = new Set();
-    sCommit();
-    var c = roomCenter(), x = r2(snap(c.x - 1.5)), y = r2(snap(c.y - 1.5));
-    var z = { id: newId('z'), label: 'Keep clear', x1: x, y1: y, x2: x + 3, y2: y + 3, door: null, auto: false };
-    room.zones.push(z); ssel = { k: 'zone', id: z.id }; changed();
-    setStatus('Added a clear zone. Drag it into place, and drag its corner to resize it.');
-  }
   function deleteSetupSel() {
-    if (!ssel || ssel.k === 'wall' || ssel.k === 'type') return;
+    if (!ssel || ssel.k === 'wall') return;
     sCommit();
     var id = ssel.id;
-    if (ssel.k === 'feature') { room.features = room.features.filter(function (f) { return f.id !== id; }); refreshDoorZones(); }
+    if (ssel.k === 'feature') { room.features = room.features.filter(function (f) { return f.id !== id; }); refreshZones(); }
     else if (ssel.k === 'fixture') room.fixtures = room.fixtures.filter(function (f) { return f.id !== id; });
     else room.zones = room.zones.filter(function (z) { return z.id !== id; });
     ssel = null; changed();
   }
   function nudgeSetup(dx, dy) {
-    var o = selObj(); if (!o || ssel.k === 'type') return;
+    var o = selObj(); if (!o) return;
     if (ssel.k === 'wall') {
       var d = o.horiz ? dy : dx; if (!d) return;
       var out = cleanOutline(moveEdge(room.outline, o.i, d));
@@ -1804,9 +1776,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     sCommit();
     if (ssel.k === 'feature') {
       var along = fHoriz(o) ? dx : dy, e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 });
-      placeOnEdge(o, e, (fHoriz(o) ? (o.x1 + o.x2) / 2 : (o.y1 + o.y2) / 2) + along, fLen(o)); refreshDoorZones();
+      placeOnEdge(o, e, (fHoriz(o) ? (o.x1 + o.x2) / 2 : (o.y1 + o.y2) / 2) + along, fLen(o)); refreshZones();
     } else if (ssel.k === 'fixture') { o.x = r2(o.x + dx); o.y = r2(o.y + dy); }
-    else { o.x1 = r2(o.x1 + dx); o.x2 = r2(o.x2 + dx); o.y1 = r2(o.y1 + dy); o.y2 = r2(o.y2 + dy); o.auto = false; }
+    else { o.x1 = r2(o.x1 + dx); o.x2 = r2(o.x2 + dx); o.y1 = r2(o.y1 + dy); o.y2 = r2(o.y2 + dy); }
     changed();
   }
 
@@ -1814,7 +1786,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   function startDraw() {
     var B = RB();
     drawing = { pts: [], cur: null, gw: Math.max(40, Math.ceil(B.maxX) + 10), gh: Math.max(30, Math.ceil(B.maxY) + 10) };
-    ssel = null; renderAll();
+    ssel = null; selected = new Set(); sizeOpen = false; renderAll();
     setStatus('Click the first corner of the room.');
   }
   /* The next corner must turn 90° from the previous wall. */
@@ -1848,25 +1820,38 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   function cancelDraw() { drawing = null; renderAll(); setStatus('Drawing canceled. The room was not changed.'); }
 
   /* rooms */
+  function askRoomName(msg, def) {
+    var v = window.prompt(msg, def);
+    return v === null ? null : (v.trim().slice(0, 60) || def);
+  }
   function newRoom() {
+    var nm = askRoomName('Name for the new room:', 'New room');
+    if (nm === null) { renderChrome(); return; }
     sync();
-    var r = { id: newId('r'), name: 'New room', outline: [[0, 0], [30, 0], [30, 25], [0, 25]], types: starterTypes(), features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
-    store.rooms.push(r); setRoom(r.id); setMode('setup');
-    setStatus('New room added. Name it and set its shape, then choose Done.');
+    var r = { id: newId('r'), name: nm, outline: [[0, 0], [30, 0], [30, 25], [0, 25]], types: starterTypes(), features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
+    store.rooms.push(r); setRoom(r.id); resetView();
+    setStatus('Added "' + nm + '", a 30′ × 25′ room. Drag the walls or click one to type its length, or use Draw outline.');
+  }
+  function renameRoom() {
+    var nm = askRoomName('New name for this room:', room.name);
+    if (nm === null || nm === room.name) { renderChrome(); return; }
+    sCommit(); room.name = nm; changed();
+    setStatus('Renamed the room to "' + nm + '".');
   }
   function dupRoom() {
     sync();
     var r = JSON.parse(JSON.stringify(room));
     r.id = newId('r'); r.name = (room.name + ' copy').slice(0, 60);
-    store.rooms.push(r); setRoom(r.id); setMode('setup');
-    setStatus('Made a copy of the room, with its layouts.');
+    store.rooms.push(r); setRoom(r.id); resetView();
+    setStatus('Made a copy of the room, with its layouts. You are now in "' + r.name + '". Rename it from the Room menu.');
   }
   function deleteRoom() {
-    if (store.rooms.length < 2) return;
-    if (!pendingRoomDelete) { pendingRoomDelete = true; renderAll(); setStatus('This deletes "' + room.name + '" and its ' + room.layouts.length + ' saved layouts. Choose Confirm delete to go ahead.'); return; }
+    if (store.rooms.length < 2) { renderChrome(); setStatus('This is the only room, so it cannot be deleted.'); return; }
+    var n = room.layouts.length;
+    if (!window.confirm('Delete "' + room.name + '" and its ' + n + (n === 1 ? ' saved layout' : ' saved layouts') + '? This cannot be undone.')) { renderChrome(); return; }
     var gone = room.name;
     store.rooms = store.rooms.filter(function (r) { return r !== room; });
-    room = null; loadRoom(store.rooms[0]); nameInput.value = name; saveStore(); setMode('arrange');
+    room = null; loadRoom(store.rooms[0]); nameInput.value = name; saveStore(); resetView();
     setStatus('Deleted "' + gone + '".');
   }
 
@@ -1878,9 +1863,15 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   }
   function setupDown(e, p) {
     var t = e.target.closest ? e.target.closest('[data-k]') : null;
-    pendingRoomDelete = false; pendingTypeDelete = false;
+    pendingTypeDelete = false;
     if (!t) { ssel = null; renderAll(); return; }
-    var k = t.getAttribute('data-k'), o;
+    var k = t.getAttribute('data-k'), id = t.getAttribute('data-id'), o, fromZone = false;
+    /* A clear zone that belongs to a board, door or window: it selects and drags that item,
+       which stays on its own wall. */
+    if (k === 'zone') {
+      var zz = room.zones.filter(function (z) { return z.id === id; })[0];
+      if (zz && zz.door && featById(zz.door)) { k = 'feature'; id = zz.door; fromZone = true; }
+    }
     if (k === 'handle') { o = selObj(); if (!o) return; drag = { kind: 'resize', start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false }; return; }
     /* An end of the selected board, door or window: dragging it changes the length. */
     if (k === 'fend') {
@@ -1888,9 +1879,10 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       drag = { kind: 'fend', end: Number(t.getAttribute('data-end')), start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false, edge: nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }) };
       renderAll(); return;
     }
-    ssel = { k: k, id: t.getAttribute('data-id') }; o = selObj();
+    ssel = { k: k, id: id }; o = selObj();
     if (!o) { ssel = null; renderAll(); return; }
     drag = { kind: k, start: p, before: roomSnap(), orig: JSON.parse(JSON.stringify(o)), moved: false };
+    if (fromZone) drag.edge = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 });
     if (k === 'wall') {
       drag.base = JSON.stringify(room.outline); drag.oldMaxY = RB().maxY;
       drag.feats = featuresOn(o).map(function (f) { return { f: f, c: o.horiz ? f.y1 : f.x1 }; });
@@ -1916,8 +1908,17 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       else { var hi = r2(clamp(along, (h ? o.x1 : o.y1) + 0.25, ed.hi)); if (h) o.x2 = hi; else o.y2 = hi; }
       drag.moved = true;
     } else if (drag.kind === 'feature') {
-      var e = nearestEdge(p);
-      placeOnEdge(o, e, e.horiz ? p.x : p.y, fLen(g)); drag.moved = true;
+      /* A click that hasn't moved yet leaves the item where it is. */
+      if (!drag.moved && !dx && !dy) return;
+      if (drag.edge) {
+        /* Dragged by its clear zone: slide along its own wall. */
+        var fe = drag.edge;
+        placeOnEdge(o, fe, (fe.horiz ? (g.x1 + g.x2) / 2 + dx : (g.y1 + g.y2) / 2 + dy), fLen(g));
+      } else {
+        var e = nearestEdge(p);
+        placeOnEdge(o, e, e.horiz ? p.x : p.y, fLen(g));
+      }
+      if (o.x1 !== g.x1 || o.y1 !== g.y1 || o.x2 !== g.x2 || o.y2 !== g.y2) drag.moved = true;
     } else if (drag.kind === 'fixture') {
       o.x = r2(g.x + dx); o.y = r2(g.y + dy); if (dx || dy) drag.moved = true;
     } else if (drag.kind === 'zone') {
@@ -1927,6 +1928,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       else { o.x2 = r2(Math.max(g.x1 + 0.25, g.x2 + dx)); o.y2 = r2(Math.max(g.y1 + 0.25, g.y2 + dy)); }
       if (dx || dy) drag.moved = true;
     }
+    if (drag.kind === 'wall' || drag.kind === 'fend' || drag.kind === 'feature') refreshZones();
     renderPlan();
   }
   function setupEnd() {
@@ -1939,8 +1941,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
         room.outline = cleanOutline(room.outline);
         note = droppedNote(afterOutline(d.oldMaxY));
         if (room.outline.length !== before) ssel = null;
-      } else if (d.kind === 'feature' || d.kind === 'fend') refreshDoorZones();
-      else if (d.kind === 'zone' || (d.kind === 'resize' && ssel.k === 'zone')) { var z = selObj(); if (z) z.auto = false; }
+      } else if (d.kind === 'feature' || d.kind === 'fend') refreshZones();
       saveStore();
       if (note) setStatus(note.trim());
     }
@@ -1960,11 +1961,10 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       return;
     }
     try { svg.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
-    if (mode === 'setup') { setupDown(e, p); return; }
     var g = e.target.closest ? e.target.closest('.it') : null;
-    /* Not on furniture: walls, boards, doors, windows, fixtures and clear zones work as in Room setup. */
+    /* Not on furniture: walls, boards, doors, windows, fixtures and clear zones can be selected and dragged. */
     var rk = !g && e.target.closest ? e.target.closest('[data-k]') : null;
-    if (rk) { selected = new Set(); setupDown(e, p); return; }
+    if (rk) { selected = new Set(); sizeOpen = false; setupDown(e, p); return; }
     if (g) {
       ssel = null;
       var id = g.getAttribute('data-id');
@@ -2022,10 +2022,10 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   $('btn-dup').addEventListener('click', dupSel);
   $('btn-size').addEventListener('click', function () {
     var st = sizeTarget(); if (!st) return;
-    sizeOpen = !(sizeOpen && sizeFor === st.key); sizeFor = st.key; sizeAll = true; renderAll();
+    sizeOpen = !(sizeOpen && sizeFor === st.key); sizeFor = st.key; sizeAll = true; pendingTypeDelete = false; renderAll();
     if (sizeOpen && $('sb-w-ft')) $('sb-w-ft').focus();
   });
-  /* New furniture: a name and a color. It starts at a standard size, with the Size box open. */
+  /* New furniture: a name and a color. It starts at a standard size, with the Edit box open. */
   function openNewForm(show) {
     $('newf-form').hidden = !show; $('btn-newf').hidden = show;
     if (show) { $('nf-name').value = ''; $('nf-name').focus(); }
@@ -2038,7 +2038,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     if (!nm) { setStatus('Type a name for the new furniture.'); $('nf-name').focus(); return; }
     sCommit();
     var w = cls === 'chr' ? 1.625 : cls === 'tbl' ? 2 : 3, h = cls === 'chr' ? 1.625 : cls === 'tbl' ? 1.5 : 2;
-    var t = { id: newId('t'), name: nm, shape: 'rect', w: w, h: h, cls: cls, owned: null, chair: false };
+    var t = { id: newId('t'), name: nm, shape: 'rect', w: w, h: h, cls: cls, owned: null, chairs: chairsFor(cls, w, h, null) };
     room.types.push(t); useTypes();
     var c = roomCenter(), it = mk(t.id, r2(snap(c.x - w / 2)), r2(snap(c.y - h / 2)), 0);
     items.push(it); selected = new Set([it.id]); ssel = null;
@@ -2046,16 +2046,11 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     openNewForm(false); changed();
     setStatus('Added "' + nm + '". Type its size in the box, then drag it into place.');
   });
-  /* Add to the room: boards, doors, windows and other things on the walls, plus fixtures and clear zones. */
+  /* Add to the Wall: boards, doors, windows and other things on the walls. */
   KIND_ORDER.forEach(function (k) {
     var b = document.createElement('button');
     b.type = 'button'; b.id = 'ra-' + k; b.textContent = KINDS[k].name;
     b.addEventListener('click', function () { addFeature(k); });
-    $('room-add-btns').appendChild(b);
-  });
-  [['ra-fixture', 'Fixture', addFixture], ['ra-zone', 'Clear zone', addZone]].forEach(function (x) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.id = x[0]; b.textContent = x[1]; b.addEventListener('click', function () { x[2](); });
     $('room-add-btns').appendChild(b);
   });
   $('btn-del').addEventListener('click', delSel);
@@ -2066,43 +2061,35 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     el.addEventListener('change', function () { opts[k] = el.checked; renderAll(); });
   });
   nameInput.addEventListener('input', function () { name = nameInput.value; saveStore(); });
-  $('btn-setup').addEventListener('click', function () { setMode(mode === 'setup' ? 'arrange' : 'setup'); setStatus(''); });
   $('room-pick').addEventListener('change', function (e) {
     var v = e.target.value;
     if (v === '+new') { newRoom(); return; }
-    if (v === '+setup') { setMode('setup'); setStatus(''); return; }
-    setRoom(v); setMode(mode); setStatus('Switched to "' + room.name + '".');
+    if (v === '+rename') { renameRoom(); return; }
+    if (v === '+delete') { deleteRoom(); return; }
+    setRoom(v); resetView(); setStatus('Switched to "' + room.name + '".');
   });
-  $('menu-setup').addEventListener('click', function () { setMode('setup'); setStatus(''); });
   /* The Details panel (checks, selected piece, saved layouts) is closed until asked for. */
   $('btn-checks').addEventListener('click', function () { panelOpen = !panelOpen; renderAll(); });
   $('btn-layouts').addEventListener('click', function () { panelOpen = true; renderAll(); $('saved-sec').scrollIntoView({ block: 'nearest' }); });
   $('btn-panel-close').addEventListener('click', function () { panelOpen = false; renderAll(); });
   window.addEventListener('resize', function () { fitPlan(); placeSelBar(); renderSizeBox(); });
-  $('btn-room-new').addEventListener('click', newRoom);
   $('btn-room-dup').addEventListener('click', dupRoom);
-  $('btn-room-del').addEventListener('click', deleteRoom);
   $('btn-draw').addEventListener('click', startDraw);
   $('btn-draw-finish').addEventListener('click', finishDraw);
   $('btn-draw-back').addEventListener('click', function () { if (drawing && drawing.pts.length) { drawing.pts.pop(); drawing.cur = null; renderAll(); } });
   $('btn-draw-cancel').addEventListener('click', cancelDraw);
   $('btn-flip-lr').addEventListener('click', function () { flipRoom(true); });
   $('btn-flip-fb').addEventListener('click', function () { flipRoom(false); });
-  $('btn-add-fixture').addEventListener('click', addFixture);
-  $('btn-add-zone').addEventListener('click', addZone);
-  $('btn-type-add').addEventListener('click', addType);
-  $('btn-sundo').addEventListener('click', undo);
-  $('btn-sredo').addEventListener('click', redo);
   document.addEventListener('keydown', function (e) {
     var tag = (e.target && e.target.tagName) || '';
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(tag)) return;
-    var mod = e.ctrlKey || e.metaKey, k = e.key, setup = mode === 'setup';
+    var mod = e.ctrlKey || e.metaKey, k = e.key;
     if (drawing) { if (k === 'Escape') cancelDraw(); return; }
     if (mod && (k === 'z' || k === 'Z')) { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
     if (mod && (k === 'y' || k === 'Y')) { e.preventDefault(); redo(); return; }
     if (mod) return;
     var st = e.shiftKey ? 1 : 0.25, dx = k === 'ArrowLeft' ? -st : k === 'ArrowRight' ? st : 0, dy = k === 'ArrowUp' ? -st : k === 'ArrowDown' ? st : 0;
-    if (setup || ssel) {
+    if (ssel) {
       if (k === 'Delete' || k === 'Backspace') { if (ssel && ssel.k !== 'wall') { e.preventDefault(); deleteSetupSel(); } }
       else if (k === 'Escape') { ssel = null; renderAll(); }
       else if (k.indexOf('Arrow') === 0 && ssel) { e.preventDefault(); nudgeSetup(dx, dy); }
@@ -2134,7 +2121,9 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
      version: newer versions of the planner must keep reading older files.
        v1: { app, v, name, items, savedAt }           (the original room is implied)
        v2: adds room: { id, name, outline, features, fixtures, zones }
-       v3: room also has types, its furniture list (older rooms get the original room's furniture) */
+       v3: room also has types, its furniture list (older rooms get the original room's furniture).
+           Since Nov 2026 a type may carry chairs (a number) and a zone depth, pre and post (see zoneRect).
+           Both are additions older planners ignore, so the version stayed 3. */
   var FILE_KEY = 'classroom-layout-planner', FILE_V = 3;
   var crcTable = null;
   function crc32(u8) {
@@ -2264,7 +2253,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     if (target.room !== room) setRoom(target.room.id);
     var h = hydrate(data.items);
     commit(); items = h; name = nm; nameInput.value = nm; selected.clear();
-    saveStore(); setMode('arrange');
+    saveStore(); resetView();
     setStatus('Opened "' + nm + '" in ' + (target.added ? 'a new room, "' : 'your room "') + room.name + '". Choose Save layout to keep it in this browser.');
   }
   function addSavedFromFile(list, roomData) {
@@ -2276,7 +2265,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var names = new Set(add.map(function (s) { return s.name; }));
     target.room.layouts = add.concat(target.room.layouts.filter(function (s) { return !names.has(s.name); })).slice(0, 30);
     if (target.room !== room) setRoom(target.room.id);
-    saveStore(); setMode('arrange');
+    saveStore(); resetView();
     setStatus('Added ' + add.length + (add.length === 1 ? ' saved layout' : ' saved layouts') + ' to "' + room.name + '".');
   }
   function readUpload(file) {
