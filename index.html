@@ -157,9 +157,8 @@ body { padding: 0; }
 .field select { min-width: 170px; }
 .spacer { flex: 1; }
 button.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-.toplink { font-size: 13px; padding: 2px; text-decoration: none; margin-left: auto; }
-.toplink:hover { text-decoration: underline; }
-.toplink { align-self: flex-end; padding: 7px 2px; }
+.statusbar .helplink { font-size: 13px; text-decoration: none; white-space: nowrap; }
+.statusbar .helplink:hover { text-decoration: underline; }
 #layout-name { width: 170px; }
 .drop { position: relative; align-self: flex-end; }
 .dropmenu { position: absolute; top: calc(100% + 4px); left: 0; z-index: 40; display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 170px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16); }
@@ -309,6 +308,17 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
             <button id="btn-flip-fb" type="button" title="Mirror the room and everything in it, front to back.">Flip front–back</button>
           </div>
         </div>
+        <div class="drop" id="drop-show">
+          <button id="btn-show" type="button" class="droptoggle" aria-haspopup="true" aria-expanded="false">Show <span aria-hidden="true">▾</span></button>
+          <div class="dropmenu toggles" role="group" aria-label="Show on the plan" hidden>
+            <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap furniture to 3″</label>
+            <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
+            <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
+            <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
+            <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
+            <label for="opt-walls"><input type="checkbox" id="opt-walls" checked=""> Wall lengths</label>
+          </div>
+        </div>
       </div>
     </div>
     <div class="spacer"></div>
@@ -321,18 +331,6 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       </div>
     </div>
     <input id="file-upload" type="file" accept="image/png,.png,application/json,.json" hidden>
-    <div class="drop right" id="drop-show">
-      <button id="btn-show" type="button" class="droptoggle" aria-haspopup="true" aria-expanded="false">Show <span aria-hidden="true">▾</span></button>
-      <div class="dropmenu toggles" role="group" aria-label="Show on the plan" hidden>
-        <label for="opt-snap"><input type="checkbox" id="opt-snap" checked=""> Snap to 3″</label>
-        <label for="opt-grid"><input type="checkbox" id="opt-grid" checked=""> 1′ grid</label>
-        <label for="opt-zones"><input type="checkbox" id="opt-zones" checked=""> Clear zones</label>
-        <label for="opt-gaps"><input type="checkbox" id="opt-gaps" checked=""> Gap distances</label>
-        <label for="opt-align"><input type="checkbox" id="opt-align" checked=""> Alignment lines</label>
-        <label for="opt-walls"><input type="checkbox" id="opt-walls" checked=""> Wall lengths</label>
-      </div>
-    </div>
-    <a class="helplink toplink" href="help.html" target="_blank" rel="noopener">How to use</a>
   </header>
   <div class="toolbar" id="tb-draw" role="toolbar" aria-label="Outline drawing tools" hidden>
     <div class="tgroup"><span class="lbl">Drawing the outline</span>
@@ -384,6 +382,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     <button id="btn-checks" type="button" class="chk" title="Show the checks"></button>
     <span id="status" aria-live="polite"></span>
     <span id="sub"></span>
+    <a class="helplink" href="help.html" target="_blank" rel="noopener">How to use</a>
   </footer>
 </div>
 </template>
@@ -438,30 +437,33 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       { id: 'table', name: 'CTE Desk', shape: 'rect', w: 5, h: 2, cls: 'tbl', owned: 15, chairs: 2 },
       { id: 'single', name: 'Single Desk', shape: 'rect', w: 2, h: 1.5, cls: 'tbl', owned: null, chairs: 1 },
       { id: 'chair', name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', owned: 30, chairs: 0 },
-      { id: 'desk', name: 'Teacher desk', shape: 'rect', w: 3.92, h: 2.5, cls: 'oth', owned: 1, chairs: 0 },
+      { id: 'desk', name: 'Teacher desk', shape: 'rect', w: 3.92, h: 2.5, cls: 'oth', owned: 1, chairs: 1 },
       { id: 'cow', name: 'COW cart', shape: 'rect', w: 2.17, h: 2.5, cls: 'oth', owned: 1, chairs: 0 },
       { id: 'storage', name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', owned: 2, chairs: 0 },
       { id: 'shelf', name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', owned: 1, chairs: 0 }
     ];
   }
-  /* The starter list for new rooms. furniture.csv replaces this when it loads; this copy is the fallback.
-     chairs null means worked out from the size. */
-  var STARTER = [
-    { name: 'CTE Desk', shape: 'rect', w: 5, h: 2, cls: 'tbl', chairs: null },
-    { name: 'Single Desk', shape: 'rect', w: 2, h: 1.5, cls: 'tbl', chairs: null },
-    { name: 'Chair', shape: 'rect', w: 1.625, h: 1.625, cls: 'chr', chairs: null },
-    { name: 'Teacher desk', shape: 'rect', w: 3.917, h: 2.5, cls: 'oth', chairs: null },
-    { name: 'Bookshelf', shape: 'rect', w: 3, h: 1.25, cls: 'oth', chairs: null },
-    { name: 'Storage unit', shape: 'rect', w: 4, h: 1.5, cls: 'oth', chairs: null }
-  ];
-  function starterTypes() {
-    var seen = {};
-    return STARTER.map(function (s) {
-      var id = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item', k = id, i = 2, h = s.shape === 'round' ? s.w : s.h;
-      while (seen[k]) k = id + '-' + (i++);
-      seen[k] = 1;
-      return { id: k, name: s.name, shape: s.shape, w: s.w, h: h, cls: s.cls, owned: null, chairs: chairsFor(s.cls, s.w, h, s.chairs, s.shape) };
+  /* furniture.csv, once loaded: the owner's one place to add furniture types. Each layout gets
+     every name in it that it doesn't have yet. room.csvSeen remembers the names already offered
+     to that layout, so a type removed from a layout's list doesn't come back, and a size changed
+     in the file doesn't overwrite a layout's own size. */
+  var CSV_LIST = [];
+  function applyCsv(r) {
+    if (!CSV_LIST.length) return false;
+    var seen = Array.isArray(r.csvSeen) ? r.csvSeen : [], added = false;
+    function key(n) { return n.trim().toLowerCase(); }
+    CSV_LIST.forEach(function (s) {
+      var k = key(s.name);
+      if (seen.indexOf(k) >= 0) return;
+      seen.push(k);
+      if (r.types.some(function (t) { return key(t.name) === k; })) return;
+      var id = s.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'item', tid = id, i = 2;
+      while (r.types.some(function (t) { return t.id === tid; })) tid = id + '-' + (i++);
+      r.types.push({ id: tid, name: s.name, shape: s.shape, w: s.w, h: s.h, cls: s.cls, owned: null, chairs: chairsFor(s.cls, s.w, s.h, s.chairs, s.shape) });
+      added = true;
     });
+    r.csvSeen = seen.slice(0, 300);
+    return added;
   }
   function splitCSV(line) {
     var out = [], cur = '', q = false;
@@ -532,6 +534,8 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   /* Rounds to a thousandth of a foot, so repeated moves and flips don't drift. */
   function r2(v) { return Math.round(v * 1000) / 1000; }
   function snap(v) { return Math.round(v / SNAP) * SNAP; }
+  /* Walls and outline corners snap to the inch. */
+  function wsnap(v) { return r2(Math.round(v * 12) / 12); }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
   function fmt(ft) {
     var inch = Math.max(0, Math.round(ft * 12)), f = Math.floor(inch / 12), i = inch % 12;
@@ -688,6 +692,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     function txt(v, d) { return (typeof v === 'string' && v.trim()) ? v.trim().slice(0, 40) : d; }
     var r = { id: sid(o.id, 'r'), name: (typeof o.name === 'string' && o.name.trim()) ? o.name.trim().slice(0, 60) : 'Room', outline: pts, types: sanitizeTypes(o.types), features: [], fixtures: [], zones: [], layouts: [], draft: emptyDraft() };
     if (!r.types.length) r.types = legacyTypes();
+    r.csvSeen = Array.isArray(o.csvSeen) ? o.csvSeen.filter(function (x) { return typeof x === 'string'; }).slice(0, 300) : [];
     var map = typeMap(r.types);
     (Array.isArray(o.features) ? o.features : []).forEach(function (f) {
       if (!f || !KINDS[f.kind]) return;
@@ -761,7 +766,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   }
   function roomGeom(r) { return { id: r.id, name: r.name, outline: r.outline, types: r.types, features: r.features, fixtures: r.fixtures, zones: r.zones }; }
 
-  /* The store: { v: 3, active, rooms }, where each "room" is a layout. v2 stores held rooms that
+  /* The store: { v: 3, active, rooms, deskChair }, where each "room" is a layout. v2 stores held rooms that
      each had several saved layouts; they are split up by splitRoom. */
   function loadStore() {
     var raw = readLS(STORE_KEY), st = { v: 3, active: null, rooms: [] };
@@ -788,6 +793,11 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       splitRoom(d).forEach(add);
     }
     if (!st.rooms.some(function (r) { return r.id === st.active; })) st.active = st.rooms[0].id;
+    /* Nov 2026: the teacher desk comes with one chair. Done once, so a 0 set by hand later stays. */
+    if (!(raw && raw.deskChair)) st.rooms.forEach(function (r) {
+      r.types.forEach(function (t) { if (/^teacher desk$/i.test(t.name) && t.cls === 'oth' && !t.chairs) t.chairs = 1; });
+    });
+    st.deskChair = 1;
     return st;
   }
 
@@ -1001,15 +1011,44 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       else ln = [w - i, i, w - i, h - i];
       s += '<line class="back" x1="' + ln[0] + '" y1="' + ln[1] + '" x2="' + ln[2] + '" y2="' + ln[3] + '"/>';
     } else if (T.cls === 'oth') {
-      /* The name goes on the piece when it fits, shrunk if needed. */
-      var fs = Math.min(11, (Math.max(w, h) - 8) / (T.name.length * 0.58));
-      if (fs >= 6.5 && Math.min(w, h) >= fs + 3) {
-        var cx = r2(w / 2), cy = r2(h / 2), vert = h > w * 1.2;
-        s += '<text x="' + cx + '" y="' + cy + '" style="font-size:' + r2(fs) + 'px" text-anchor="middle" dominant-baseline="central"' + (vert ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>' + esc(T.name) + '</text>';
+      var lab = fitLabel(T.name, w, h, T.shape === 'round' || T.shape === 'kidney');
+      if (lab) {
+        var cx = r2(w / 2), cy = r2(h / 2), vert = h > w * 1.2, lh = lab.fs * 1.15;
+        s += '<text x="' + cx + '" y="' + cy + '" style="font-size:' + r2(lab.fs) + 'px" text-anchor="middle" dominant-baseline="central"' + (vert ? ' transform="rotate(-90 ' + cx + ' ' + cy + ')"' : '') + '>' +
+          lab.lines.map(function (ln, k) { return '<tspan x="' + cx + '" y="' + r2(cy + (k - (lab.lines.length - 1) / 2) * lh) + '">' + esc(ln) + '</tspan>'; }).join('') + '</text>';
       }
     }
     if (sel) s += '<rect class="selring" x="-3" y="-3" width="' + r2(w + 6) + '" height="' + r2(h + 6) + '" rx="4"/>';
     return s + '</g>';
+  }
+  /* How a name fits on a piece w × h (SVG units): on one line, else on two, else shortened
+     ("Filing Cab…", then initials like "FC"). Returns { fs, lines } or null if nothing fits. */
+  function fitLabel(name, w, h, curved) {
+    var L = Math.max(w, h) * (curved ? 0.75 : 1) - 6, Sd = Math.min(w, h) * (curved ? 0.75 : 1) - 3, MIN = 6;
+    function size(lines) {
+      var longest = Math.max.apply(null, lines.map(function (x) { return x.length; }));
+      var fs = Math.min(11, L / (longest * 0.58), Sd / (lines.length * 1.15));
+      return fs >= MIN ? fs : 0;
+    }
+    function ok(lines) { var fs = size(lines); return fs ? { fs: fs, lines: lines } : null; }
+    var words = name.split(/\s+/), best = ok([name]);
+    if (best) return best;
+    if (words.length > 1) {
+      /* Split where the two lines come out most even. */
+      var at = 1, bestDiff = 1e9;
+      for (var i = 1; i < words.length; i++) {
+        var d = Math.abs(words.slice(0, i).join(' ').length - words.slice(i).join(' ').length);
+        if (d < bestDiff) { bestDiff = d; at = i; }
+      }
+      best = ok([words.slice(0, at).join(' '), words.slice(at).join(' ')]);
+      if (best) return best;
+    }
+    for (var n = name.length - 1; n >= 3; n--) {
+      best = ok([name.slice(0, n).replace(/\s+$/, '') + '…']);
+      if (best) return best;
+    }
+    var ini = words.length > 1 ? words.map(function (x) { return x.charAt(0); }).join('').slice(0, 3).toUpperCase() : name.slice(0, 2);
+    return ok([ini]);
   }
   function centeredText(cls, b, label) {
     var cx = P((b.x1 + b.x2) / 2), cy = P((b.y1 + b.y2) / 2), vert = (b.y2 - b.y1) > (b.x2 - b.x1) * 1.2;
@@ -1873,7 +1912,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
   }
   /* The next corner must turn 90° from the previous wall. */
   function drawNext(p) {
-    var d = drawing, q = [clamp(snap(p.x), 0, d.gw), clamp(snap(p.y), 0, d.gh)], n = d.pts.length;
+    var d = drawing, q = [clamp(wsnap(p.x), 0, d.gw), clamp(wsnap(p.y), 0, d.gh)], n = d.pts.length;
     if (!n) return q;
     var last = d.pts[n - 1];
     if (n === 1) { if (Math.abs(q[0] - last[0]) >= Math.abs(q[1] - last[1])) q[1] = last[1]; else q[0] = last[0]; }
@@ -1979,7 +2018,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var o = selObj(), dx = snap(p.x - drag.start.x), dy = snap(p.y - drag.start.y), g = drag.orig;
     if (!o && drag.kind !== 'wall') return;
     if (drag.kind === 'wall') {
-      var base = JSON.parse(drag.base), d = g.horiz ? dy : dx, al = opts.align ? wallAlign(base, g, d) : null;
+      var base = JSON.parse(drag.base), d = wsnap(g.horiz ? p.y - drag.start.y : p.x - drag.start.x), al = opts.align ? wallAlign(base, g, d) : null;
       if (al) d = al.d;
       /* Cleaning first lets a wall line up exactly with one it is offset from: the short wall
          between them shrinks to nothing and the two become one straight wall. */
@@ -2331,6 +2370,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var r = sanitizeRoom(roomData || defaultRoom(), false);
     if (!r) return null;
     migrateTypes(r, false);
+    applyCsv(r);
     r.id = newId('r'); r.name = uniqueName(nm); r.layouts = [];
     r.draft = { name: r.name, items: clean(hydrate(list, typeMap(r.types)) || []), t: Date.now() };
     return r;
@@ -2394,10 +2434,16 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     if (f) readUpload(f);
   });
 
-  /* The starter furniture chart. If it can't be loaded, the built-in copy above is used. */
+  /* furniture.csv: adds furniture new to the file to every layout's list (see applyCsv). */
   if (window.fetch && /^https?:$/.test(location.protocol)) {
     fetch('furniture.csv', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.text() : ''; })
-      .then(function (t) { var s = parseStarter(t); if (s.length) STARTER = s; }).catch(function () { /* keep the built-in list */ });
+      .then(function (t) {
+        CSV_LIST = parseStarter(t);
+        var any = false;
+        store.rooms.forEach(function (r) { if (applyCsv(r)) any = true; });
+        if (any) { useTypes(); renderAll(); }
+        saveStore();
+      }).catch(function () { /* the layouts keep their own lists */ });
   }
 
   renderAll();

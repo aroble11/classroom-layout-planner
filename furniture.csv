@@ -2,7 +2,9 @@ name,shape,width_in,depth_in,color,with_chair
 CTE Desk,rectangle,60,24,table,yes
 Single Desk,rectangle,24,18,table,yes
 Chair,rectangle,19.5,19.5,chair,no
-Teacher desk,rectangle,47,30,other,no
+Teacher desk,rectangle,47,30,other,yes
 Bookshelf,rectangle,36,15,other,no
 Storage unit,rectangle,48,18,other,no
 Podium,rectangle,24,36,other,no
+COW cart,square,24,27,other,no
+Filing Cabinet,rectangle,15,24,other,no
