@@ -10,7 +10,9 @@ Open it here: https://aroble11.github.io/classroom-layout-planner/
 
 ## The starter furniture chart
 
-`furniture.csv` is the list of furniture that every **new room** starts with. Edit it to add furniture or change a size.
+`furniture.csv` is a starter list of furniture. Edit it to add furniture or change a size.
+
+**Not used at the moment.** It used to be the furniture list for each new room. Since November 2026 a new layout copies the furniture list of the layout it was made from, so nothing reads this file. It is kept in case it is wanted again.
 
 | Column | What to put in it |
 |---|---|
@@ -29,6 +31,6 @@ To edit it on GitHub:
 
 The site picks up the change within about ten minutes.
 
-Changing the chart affects new rooms only. Rooms that people have already set up keep their own furniture lists, which they change with the **Edit** button above a selected piece.
+Each layout keeps its own furniture list, which people change with the **Edit** button above a selected piece.
 
 If a name contains a comma, put the name in double quotes.
