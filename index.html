@@ -793,11 +793,12 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       splitRoom(d).forEach(add);
     }
     if (!st.rooms.some(function (r) { return r.id === st.active; })) st.active = st.rooms[0].id;
-    /* Nov 2026: the teacher desk comes with one chair. Done once, so a 0 set by hand later stays. */
-    if (!(raw && raw.deskChair)) st.rooms.forEach(function (r) {
-      r.types.forEach(function (t) { if (/^teacher desk$/i.test(t.name) && t.cls === 'oth' && !t.chairs) t.chairs = 1; });
+    /* Nov 2026: the teacher desk comes with one chair, whatever it had before. Done once (deskChair 2),
+       so a number set by hand afterwards stays. */
+    if (!(raw && raw.deskChair >= 2)) st.rooms.forEach(function (r) {
+      r.types.forEach(function (t) { if (/^teacher'?s? desk$/i.test(t.name.trim()) && t.cls !== 'chr') t.chairs = 1; });
     });
-    st.deskChair = 1;
+    st.deskChair = 2;
     return st;
   }
 
@@ -1497,6 +1498,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       b = o.horiz ? { x1: o.lo, y1: o.c, x2: o.hi, y2: o.c } : { x1: o.c, y1: o.lo, x2: o.c, y2: o.hi };
       line = !o.horiz; inw = inwardSign({ x1: b.x1, y1: b.y1, x2: b.x2, y2: b.y2 });
       rows = [['head', 'Wall'], ['len', 'Length', 'sb-len', o.hi - o.lo]];
+      cutEnds(o.i).forEach(function (c) { rows.push(['button', 'Cut in at the ' + c.word + ' end', 'sb-cut' + c.end, 'plain']); });
     } else if (k === 'feature') {
       var e = nearestEdge({ x: (o.x1 + o.x2) / 2, y: (o.y1 + o.y2) / 2 }), hz = fHoriz(o), zn = zoneFor(o);
       b = o; line = !hz; inw = inwardSign(o);
@@ -1532,7 +1534,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
         if (t === 'select') return '<label class="sbrow"><span class="sbk">' + esc(r[1]) + '</span><select id="' + r[2] + '">' + r[3] + '</select></label>';
         if (t === 'num') return '<label class="sbrow"><span class="sbk">' + esc(r[1]) + '</span><input type="number" class="sbnum" id="' + r[2] + '" min="0" max="8" step="1" value="' + r[3] + '"></label>';
         if (t === 'check') return '<label class="sbcheck"><input type="checkbox" id="' + r[2] + '"' + (r[3] ? ' checked' : '') + '> ' + esc(r[1]) + '</label>';
-        return '<button type="button" class="danger sbbtn' + (r[2] === 'sb-tdel' && pendingTypeDelete ? ' confirm' : '') + '" id="' + r[2] + '">' + esc(r[1]) + '</button>';
+        return '<button type="button" class="' + (r[3] === 'plain' ? '' : 'danger ') + 'sbbtn' + (r[2] === 'sb-tdel' && pendingTypeDelete ? ' confirm' : '') + '" id="' + r[2] + '">' + esc(r[1]) + '</button>';
       }).join('');
       bx.setAttribute('data-key', key);
       bx.querySelectorAll('.len input').forEach(function (inp) { inp.addEventListener('change', applySizeBox); });
@@ -1582,6 +1584,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       rebuildBox();
     });
     onClick('sb-del', deleteSetupSel);
+    if (ssel && ssel.k === 'wall') cutEnds(Number(ssel.id)).forEach(function (c) { onClick('sb-cut' + c.end, function () { cutCorner(c); }); });
   }
   /* Removes a furniture type from the room's list, and every piece of it, after a second click. */
   function deleteType(T) {
@@ -1836,6 +1839,30 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     var n = afterOutline(oldMaxY);
     if (!keep) ssel = null;
     changed(); setStatus('The wall is now ' + fmtFine(L) + ' long.' + droppedNote(n));
+  }
+  /* The ends of wall i whose corner can be cut: an outside corner (the room is on its inside) with
+     room on both walls for the cut. Each is { end: 0 or 1, j: the corner's point, word, s: the cut's size }. */
+  function cutEnds(i) {
+    var o = room.outline, n = o.length, out = [];
+    [i, (i + 1) % n].forEach(function (j, end) {
+      var P = o[j], A = o[(j + n - 1) % n], B = o[(j + 1) % n];
+      var la = Math.abs(A[0] - P[0]) + Math.abs(A[1] - P[1]), lb = Math.abs(B[0] - P[0]) + Math.abs(B[1] - P[1]);
+      var ux = Math.sign(A[0] - P[0]) + Math.sign(B[0] - P[0]), uy = Math.sign(A[1] - P[1]) + Math.sign(B[1] - P[1]);
+      if (!pointIn(P[0] + ux * 0.01, P[1] + uy * 0.01, o)) return;
+      var s = Math.floor(Math.min(2, la - 0.25, lb - 0.25) * 12) / 12;
+      if (s < 0.5) return;
+      var other = o[end ? i : (i + 1) % n], horiz = P[1] === other[1];
+      out.push({ end: end, j: j, s: s, word: horiz ? (P[0] < other[0] ? 'left' : 'right') : (P[1] < other[1] ? 'top' : 'bottom') });
+    });
+    return out.sort(function (a, b) { return /left|top/.test(a.word) ? -1 : /left|top/.test(b.word) ? 1 : 0; });
+  }
+  /* Cuts a square out of a corner: the corner becomes a short step of two new walls, which can then
+     be dragged or given exact lengths. */
+  function cutCorner(c) {
+    var o = room.outline, n = o.length, P = o[c.j], A = o[(c.j + n - 1) % n], B = o[(c.j + 1) % n], s = c.s;
+    var ax = Math.sign(A[0] - P[0]), ay = Math.sign(A[1] - P[1]), bx = Math.sign(B[0] - P[0]), by = Math.sign(B[1] - P[1]);
+    var pts = o.slice(0, c.j).concat([[r2(P[0] + ax * s), r2(P[1] + ay * s)], [r2(P[0] + (ax + bx) * s), r2(P[1] + (ay + by) * s)], [r2(P[0] + bx * s), r2(P[1] + by * s)]], o.slice(c.j + 1));
+    if (setOutline(pts, 'Cut a ' + fmtFine(s) + ' × ' + fmtFine(s) + ' corner out of the room. Drag the two new walls into place, or click one and type its length.')) sizeOpen = false;
   }
   function flipRoom(lr) {
     sCommit();
