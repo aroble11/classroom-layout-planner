@@ -495,7 +495,14 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
     return out;
   }
   function typeMap(list) { var m = {}; list.forEach(function (t) { m[t.id] = t; }); return m; }
-  function useTypes() { TYPES = typeMap(room.types); ORDER = room.types.map(function (t) { return t.id; }); }
+  /* ORDER lists the types grouped by color: student tables, then chairs, then everything else,
+     each group in the layout's own order. */
+  var GROUP_RANK = { tbl: 0, chr: 1, oth: 2 };
+  function useTypes() {
+    TYPES = typeMap(room.types);
+    ORDER = room.types.map(function (t, i) { return { id: t.id, k: (GROUP_RANK[t.cls] || 0) * 1000 + i }; })
+      .sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.id; });
+  }
   function sanitizeTypes(list) {
     var out = [], seen = {};
     (Array.isArray(list) ? list : []).forEach(function (t) {
@@ -793,12 +800,12 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       splitRoom(d).forEach(add);
     }
     if (!st.rooms.some(function (r) { return r.id === st.active; })) st.active = st.rooms[0].id;
-    /* Nov 2026: the teacher desk comes with one chair, whatever it had before. Done once (deskChair 2),
-       so a number set by hand afterwards stays. */
-    if (!(raw && raw.deskChair >= 2)) st.rooms.forEach(function (r) {
-      r.types.forEach(function (t) { if (/^teacher'?s? desk$/i.test(t.name.trim()) && t.cls !== 'chr') t.chairs = 1; });
+    /* Nov 2026: the teacher desk comes with one chair, whatever it had before. Done once (deskChair 3),
+       so a number set by hand afterwards stays. Any name with "teacher" and "desk" counts. */
+    if (!(raw && raw.deskChair >= 3)) st.rooms.forEach(function (r) {
+      r.types.forEach(function (t) { if (/teacher/i.test(t.name) && /desk/i.test(t.name) && t.cls !== 'chr') t.chairs = 1; });
     });
-    st.deskChair = 2;
+    st.deskChair = 3;
     return st;
   }
 
@@ -1567,7 +1574,7 @@ button.primary { background: var(--ink); color: var(--surface); border-color: va
       changed();
     });
     onChange('sb-all', function () { sizeAll = $('sb-all').checked; });
-    onChange('sb-cls', function () { var v = $('sb-cls').value; sCommit(); T.cls = v; T.chairs = chairsFor(v, T.w, T.h, null, T.shape); rebuildBox(); });
+    onChange('sb-cls', function () { var v = $('sb-cls').value; sCommit(); T.cls = v; T.chairs = chairsFor(v, T.w, T.h, null, T.shape); useTypes(); rebuildBox(); });
     onChange('sb-shape', function () { sCommit(); T.shape = $('sb-shape').value; if (T.shape === 'round') T.h = T.w; T.chairs = chairsFor(T.cls, T.w, T.h, null, T.shape); rebuildBox(); });
     onChange('sb-chairs', function () {
       var n = Math.round(Number($('sb-chairs').value));
